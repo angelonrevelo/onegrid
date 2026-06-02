@@ -33,6 +33,9 @@ import type {
   Aggregation,
   AggregationModel,
   AggregationType,
+  ComparisonFilter,
+  ComparisonOperator,
+  FilterModel,
   SortModel,
 } from '@onegrid/protocol';
 
@@ -72,6 +75,46 @@ const AGGREGATOR_OPTIONS: ReadonlyArray<{ value: 'none' | AggregationType; label
   { value: 'first', label: 'First' },
   { value: 'last', label: 'Last' },
 ];
+
+/** Filter-panel operator picker options (v1.3). Maps 1:1 to protocol
+ *  ComparisonOperator. 'none' clears the column's filter. */
+const FILTER_OPERATOR_OPTIONS: ReadonlyArray<{
+  value: 'none' | ComparisonOperator;
+  label: string;
+}> = [
+  { value: 'none', label: '—' },
+  { value: 'eq', label: '=' },
+  { value: 'neq', label: '≠' },
+  { value: 'lt', label: '<' },
+  { value: 'lte', label: '≤' },
+  { value: 'gt', label: '>' },
+  { value: 'gte', label: '≥' },
+  { value: 'contains', label: 'contains' },
+  { value: 'notContains', label: 'not contains' },
+  { value: 'startsWith', label: 'starts with' },
+  { value: 'endsWith', label: 'ends with' },
+  { value: 'in', label: 'in' },
+  { value: 'notIn', label: 'not in' },
+  { value: 'between', label: 'between' },
+  { value: 'notBetween', label: 'not between' },
+  { value: 'isNull', label: 'is null' },
+  { value: 'isNotNull', label: 'is not null' },
+];
+
+/** Operators that take NO value (unary). */
+const UNARY_FILTER_OPS: ReadonlySet<ComparisonOperator> = new Set<ComparisonOperator>([
+  'isNull',
+  'isNotNull',
+]);
+
+/** Operators that take a comma-split `values` array rather than a single
+ *  `value`. */
+const MULTI_VALUE_FILTER_OPS: ReadonlySet<ComparisonOperator> = new Set<ComparisonOperator>([
+  'in',
+  'notIn',
+  'between',
+  'notBetween',
+]);
 
 interface PerformanceWithMemory extends Performance {
   readonly memory?: {
@@ -257,6 +300,20 @@ export class Grid {
     | undefined;
   private aggregationPanelEl: HTMLDivElement | null = null;
   private aggregatorByColumn = new Map<string, AggregationType>();
+
+  // Filter side panel (v1.3). Docked aside with a per-column operator +
+  // value. UI edits accumulate in draftFilters; Apply composes the
+  // FilterModel and fires onFilterModelChange (batched, not per-keystroke).
+  private readonly filterPanelEnabled: boolean;
+  private readonly onFilterModelChange:
+    | ((model: FilterModel) => void)
+    | undefined;
+  private filterPanelEl: HTMLDivElement | null = null;
+  /** Per-column draft operator + raw value string (pre-Apply). */
+  private readonly filterDraft = new Map<
+    string,
+    { op: ComparisonOperator; raw: string }
+  >();
 
   // Pinned rows + column groups + status bar.
   private pinnedTopRowSource: RowSource | undefined;
@@ -464,6 +521,10 @@ export class Grid {
         }
       }
     }
+
+    // Filter side panel (v1.3).
+    this.filterPanelEnabled = options.enableFilterPanel ?? false;
+    this.onFilterModelChange = options.onFilterModelChange;
     if (options.expanded) {
       this.expanded = new Set(options.expanded);
     }
@@ -697,6 +758,14 @@ export class Grid {
       this.host.appendChild(this.aggregationPanelEl);
       this.renderAggregationPanel();
       if (options.aggregationPanelOpen) this.openAggregationPanel();
+    }
+
+    // Filter side panel (v1.3): docked right-edge aside, batched Apply.
+    if (this.filterPanelEnabled) {
+      this.filterPanelEl = this.buildSidePanel('Filters', 'Filter panel');
+      this.host.appendChild(this.filterPanelEl);
+      this.renderFilterPanel();
+      if (options.filterPanelOpen) this.openFilterPanel();
     }
 
     // Tooltip: a shared element re-targeted per hovered cell. Mounted
@@ -1045,6 +1114,8 @@ export class Grid {
     this.groupBarEl = null;
     this.aggregationPanelEl?.remove();
     this.aggregationPanelEl = null;
+    this.filterPanelEl?.remove();
+    this.filterPanelEl = null;
     this.statusBarEl?.remove();
     this.statusBarEl = null;
     // Tear down any still-mounted detail panels so nested Grids /
@@ -2752,6 +2823,143 @@ export class Grid {
 
   closeAggregationPanel(): void {
     if (this.aggregationPanelEl) this.aggregationPanelEl.style.display = 'none';
+  }
+
+  // ---- Filter panel (v1.3) ----
+
+  /** One row per column (operator <select> + value <input>) plus an
+   *  Apply / Clear footer. Edits accumulate in `filterDraft`; nothing
+   *  fires until Apply (batched). */
+  private renderFilterPanel(): void {
+    const body = this.panelBody(this.filterPanelEl);
+    if (!body) return;
+    body.replaceChildren();
+
+    for (const column of this.columns) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;flex-direction:column;gap:2px;padding:4px 0;';
+      const name = document.createElement('span');
+      name.textContent = column.displayName ?? column.id;
+      name.style.cssText = `color:${this.theme.mutedText};font-size:11px;`;
+      row.appendChild(name);
+
+      const controls = document.createElement('div');
+      controls.style.cssText = 'display:flex;gap:4px;';
+      const draft = this.filterDraft.get(column.id);
+
+      const op = document.createElement('select');
+      op.setAttribute('aria-label', `Filter operator for ${column.displayName ?? column.id}`);
+      op.dataset.filterOp = column.id;
+      op.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 2px;cursor:pointer;flex:0 0 auto;';
+      for (const o of FILTER_OPERATOR_OPTIONS) {
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        if (draft && o.value === draft.op) opt.selected = true;
+        op.appendChild(opt);
+      }
+
+      const val = document.createElement('input');
+      val.type = 'text';
+      val.dataset.filterVal = column.id;
+      val.setAttribute('aria-label', `Filter value for ${column.displayName ?? column.id}`);
+      val.value = draft?.raw ?? '';
+      val.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 4px;flex:1 1 auto;min-width:0;';
+      // Unary ops disable the value input.
+      const syncValDisabled = (): void => {
+        const unary = UNARY_FILTER_OPS.has(op.value as ComparisonOperator);
+        val.disabled = unary || op.value === 'none';
+        val.placeholder = MULTI_VALUE_FILTER_OPS.has(op.value as ComparisonOperator)
+          ? 'comma,separated'
+          : '';
+      };
+      syncValDisabled();
+
+      const stash = (): void => {
+        if (op.value === 'none') this.filterDraft.delete(column.id);
+        else this.filterDraft.set(column.id, { op: op.value as ComparisonOperator, raw: val.value });
+      };
+      op.addEventListener('change', () => {
+        syncValDisabled();
+        stash();
+      });
+      val.addEventListener('input', stash);
+      // Keep panel keystrokes out of the grid's selection handlers.
+      val.addEventListener('keydown', (e) => e.stopPropagation());
+
+      controls.appendChild(op);
+      controls.appendChild(val);
+      row.appendChild(controls);
+      body.appendChild(row);
+    }
+
+    const footer = document.createElement('div');
+    footer.style.cssText =
+      'display:flex;gap:6px;justify-content:flex-end;padding-top:8px;' +
+      'border-top:1px solid #2a2f37;margin-top:6px;position:sticky;bottom:0;' +
+      `background:${this.theme.headerBackground};`;
+    const mkBtn = (text: string, onClick: () => void): HTMLButtonElement => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = text;
+      b.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;padding:3px 10px;font-size:11px;cursor:pointer;';
+      b.addEventListener('click', onClick);
+      return b;
+    };
+    footer.appendChild(mkBtn('Clear', () => this.clearFilterPanel()));
+    footer.appendChild(mkBtn('Apply', () => this.applyFilterPanel()));
+    body.appendChild(footer);
+  }
+
+  /** Compose the FilterModel from `filterDraft` and fire
+   *  `onFilterModelChange`. Single-value ops use `value`; multi-value ops
+   *  split the raw input on commas into `values`; unary ops carry
+   *  neither. Skips a column whose value is required but empty. Emits
+   *  `null` when no usable filter remains. The batched commit point. */
+  applyFilterPanel(): void {
+    const filters: ComparisonFilter[] = [];
+    for (const column of this.columns) {
+      const draft = this.filterDraft.get(column.id);
+      if (!draft) continue;
+      const { op, raw } = draft;
+      if (UNARY_FILTER_OPS.has(op)) {
+        filters.push({ type: 'comparison', columnId: column.id, op });
+      } else if (MULTI_VALUE_FILTER_OPS.has(op)) {
+        const values = raw
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+        if (values.length === 0) continue;
+        filters.push({ type: 'comparison', columnId: column.id, op, values });
+      } else {
+        if (raw.trim().length === 0) continue;
+        filters.push({ type: 'comparison', columnId: column.id, op, value: raw });
+      }
+    }
+    const model: FilterModel =
+      filters.length === 0 ? null : { type: 'logical', op: 'and', filters };
+    this.onFilterModelChange?.(model);
+  }
+
+  /** Reset every column's draft, re-render the panel, and fire `null`. */
+  clearFilterPanel(): void {
+    this.filterDraft.clear();
+    this.renderFilterPanel();
+    this.onFilterModelChange?.(null);
+  }
+
+  openFilterPanel(): void {
+    if (this.filterPanelEl) this.filterPanelEl.style.display = 'flex';
+  }
+
+  closeFilterPanel(): void {
+    if (this.filterPanelEl) this.filterPanelEl.style.display = 'none';
   }
 
   /** Position the band + each input over its column. Called from

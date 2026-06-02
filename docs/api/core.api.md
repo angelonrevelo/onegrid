@@ -181,15 +181,19 @@ export interface FrameStats {
 // @public (undocumented)
 export class Grid {
     constructor(options: GridOptions);
+    applyFilterPanel(): void;
     autoSizeColumn(columnId: string): void;
     autoSizeColumns(): void;
     beginEdit(row: number, col: number, initialText?: string): void;
     // (undocumented)
     cancelEdit(): void;
+    clearFilterPanel(): void;
     // (undocumented)
     clearSelection(): void;
     // (undocumented)
     closeAggregationPanel(): void;
+    // (undocumented)
+    closeFilterPanel(): void;
     closeFind(): void;
     commitEdit(): void | Promise<void>;
     copySelectionToClipboard(): Promise<string>;
@@ -225,6 +229,8 @@ export class Grid {
     isExpanded(rowIndex: number): boolean;
     // (undocumented)
     openAggregationPanel(): void;
+    // (undocumented)
+    openFilterPanel(): void;
     openFind(): void;
     refresh(): void;
     replaceAll(newValue: string): number;
@@ -271,10 +277,12 @@ export interface GridOptions {
     readonly enableColumnReorder?: boolean;
     readonly enableColumnResize?: boolean;
     readonly enableFillHandle?: boolean;
+    readonly enableFilterPanel?: boolean;
     readonly enableFind?: boolean;
     readonly enableGroupBar?: boolean;
     readonly enableRowResize?: boolean;
     readonly expanded?: ReadonlySet<number> | ReadonlyArray<number>;
+    readonly filterPanelOpen?: boolean;
     readonly flash?: {
         readonly durationMs?: number;
         readonly color?: string;
@@ -308,6 +316,7 @@ export interface GridOptions {
         colStart: number;
         colEnd: number;
     }) => void;
+    readonly onFilterModelChange?: (model: FilterModel) => void;
     readonly onFloatingFilterChange?: (columnId: string, value: string) => void;
     readonly onFrame?: (stats: FrameStats) => void;
     readonly onHeaderClick?: (columnId: string) => void;

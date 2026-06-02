@@ -279,6 +279,12 @@ function WaveControls({
         `[showcase] aggregations: ${model.map((a) => `${a.fn}(${a.columnId})`).join(', ') || '(none)'}`,
       );
     },
+    enableFilterPanel: true,
+    onFilterModelChange: (model) => {
+      // v1.3 wave 30: the composed FilterModel (batched on Apply). An
+      // adopter passes it to @onegrid/data filterIndex(). Here we log it.
+      console.log(`[showcase] filter model:`, model);
+    },
     getRowMeta: (rowIndex) => {
       // Wave 26: pin the first row to the top and the last row to the
       // bottom of the visible band. Demonstrates mid-table row pinning
@@ -320,6 +326,7 @@ function WaveControls({
         <Btn onClick={() => grid?.gotoCell(99_999, 6)}>Ctrl+End</Btn>
         <Btn onClick={() => grid?.openFind()}>Find (Ctrl+F)</Btn>
         <Btn onClick={() => grid?.openAggregationPanel()}>Aggregations</Btn>
+        <Btn onClick={() => grid?.openFilterPanel()}>Filters</Btn>
       </div>
       <div
         ref={ref}

@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { SelectionSnapshot } from './selection';
-import type { AggregationModel, SortModel } from '@onegrid/protocol';
+import type { AggregationModel, FilterModel, SortModel } from '@onegrid/protocol';
 
 /**
  * Per-column configuration. Width is the only required visual property; the
@@ -666,6 +666,25 @@ export interface GridOptions {
    *  picker is not "none", `fn` = the chosen type, `alias` defaulting to
    *  the column id). Pass it to `@onegrid/data` aggregate / groupRows. */
   readonly onAggregationChange?: (model: AggregationModel) => void;
+
+  /** v1.3. Show the filter side panel — a docked aside with a per-column
+   *  operator picker + value input. Changes are BATCHED: the composed
+   *  `FilterModel` is emitted on the Apply button (or `applyFilterPanel()`),
+   *  not per keystroke. Default false. Distinct from the per-keystroke
+   *  `floatingFilters` row. */
+  readonly enableFilterPanel?: boolean;
+
+  /** v1.3. Start the filter panel open. Default false. */
+  readonly filterPanelOpen?: boolean;
+
+  /** v1.3. Fires when the filter panel's Apply commits. Receives the
+   *  composed `FilterModel` — a `LogicalFilter('and', [...])` of one
+   *  `ComparisonFilter` per column with a set operator + value, or `null`
+   *  when nothing is set. Values are strings (the consumer coerces to the
+   *  column's type); multi-value ops (in/notIn/between/notBetween) split
+   *  the input on commas into `values`. Pass it to `@onegrid/data`
+   *  filterIndex(). */
+  readonly onFilterModelChange?: (model: FilterModel) => void;
 }
 
 export interface ColumnGroupDef {

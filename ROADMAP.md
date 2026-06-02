@@ -759,6 +759,19 @@ split (one file per Excel category + `_shared` for helpers +
   `aggregate()` / `groupRows()`. `aggregation-panel.test.ts` (11 tests).
   146/146 core tests. The `buildSidePanel` shell is reused by the
   filter + pivot panels (waves 30–31).
+- Wave 30 (2026-06-02) — **v1.3 tool panels, part 3** — filter side
+  panel. `enableFilterPanel: true` docks a right-edge aside (reuses the
+  `buildSidePanel` shell) with a per-column operator `<select>` (full
+  protocol `ComparisonOperator` set) + value `<input>`. BATCHED: edits
+  accumulate in a draft map and nothing fires until Apply / `applyFilterPanel()`,
+  which composes a `LogicalFilter('and', [ComparisonFilter…])` (single
+  ops → `value`; in/notIn/between/notBetween → comma-split `values`;
+  isNull/isNotNull → unary, value input disabled) or `null`, firing
+  `onFilterModelChange`. Clear resets + fires `null`.
+  `openFilterPanel()` / `closeFilterPanel()` / `filterPanelOpen`. Pure
+  UI — consumer wires to `@onegrid/data` `filterIndex()`; distinct from
+  the per-keystroke `floatingFilters` row. `filter-panel.test.ts` (12
+  tests, incl. batching: edits don't fire pre-Apply). 158/158 core tests.
 
 **Chunk A (OOXML interop) status as of 2026-06-02.** `@onegrid/xlsx`
 scaffold shipped: package manifest + tsup/tsconfig + worksheet
@@ -1068,7 +1081,7 @@ MCP. 96/96 core tests pass.
   (which covers compute-time customization; slots cover render-time
   component substitution).
 
-### v1.3.0 — "tool panels + UI surfaces"  🟡 **In progress — group bar + aggregation panel shipped (waves 28–29, 2026-06-02); filter / pivot panels next.**
+### v1.3.0 — "tool panels + UI surfaces"  🟡 **In progress — group bar + aggregation + filter panels shipped (waves 28–30, 2026-06-02); pivot panel next.**
 
 Surfaces every grid library is expected to ship as out-of-the-box UI.
 Today the column tool panel + the group bar exist.
@@ -1090,8 +1103,17 @@ reuse only TYPE-ONLY imports of the `@onegrid/protocol` model shapes.
   with `groupColumns`. Imperative `setGroupColumns()` / `getGroupColumns()`.
 - **Pivot side panel UI** — drag rows / columns / values bins; updates
   the PivotModel; the existing pivot compute path consumes it.
-- **Filter side panel** — every column's filter accessible from one
-  panel (current: floating filter row + per-column popovers).
+- ✅ **Filter side panel** (wave 30) — `enableFilterPanel: true` docks a
+  right-edge aside (reuses the wave-29 `buildSidePanel` shell) with a
+  per-column operator picker (the full protocol `ComparisonOperator` set)
+  + value input. Changes are BATCHED — nothing fires until Apply (or
+  `applyFilterPanel()`), which composes a `LogicalFilter('and', [...])`
+  of one `ComparisonFilter` per set column (single-value ops → `value`;
+  in/notIn/between/notBetween → comma-split `values`; isNull/isNotNull →
+  neither) or `null` when empty, firing `onFilterModelChange(model)`.
+  Clear resets + fires `null`. Distinct from the per-keystroke
+  `floatingFilters` row. Values are strings; the consumer coerces +
+  wires to `@onegrid/data` `filterIndex()`.
 - ✅ **Aggregation side panel** (wave 29) — `enableAggregationPanel: true`
   docks a right-edge aside (floats over the data band — no layout-math
   change) with one aggregator picker per column (none / sum / avg /
