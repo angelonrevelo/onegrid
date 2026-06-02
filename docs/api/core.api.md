@@ -297,7 +297,7 @@ export interface GridOptions {
     readonly onHeaderClick?: (columnId: string) => void;
     readonly onPaste?: (anchorRow: number, anchorCol: number, rows: ReadonlyArray<ReadonlyArray<string>>) => void;
     readonly onReplace?: (rowIndex: number, columnId: string, newValue: string, oldValue: unknown) => void;
-    readonly onRowReorder?: (fromRow: number, toRow: number) => void;
+    readonly onRowReorder?: (fromRows: ReadonlyArray<number>, toRow: number) => void;
     // (undocumented)
     readonly onRowResize?: (rowIndex: number, newHeight: number, finalCommit: boolean) => void;
     readonly onSelectionChange?: (selection: SelectionSnapshot) => void;

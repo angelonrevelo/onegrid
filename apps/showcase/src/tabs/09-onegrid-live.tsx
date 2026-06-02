@@ -279,8 +279,8 @@ function WaveControls({
       // Grid commits height into its own baseHeights array; this callback
       // is just for adopters who want to persist the value.
     },
-    onRowReorder: (from, to) => {
-      console.log(`[showcase] row reorder: ${from} → ${to}`);
+    onRowReorder: (fromRows, to) => {
+      console.log(`[showcase] row reorder: [${fromRows.join(', ')}] → ${to}`);
     },
     onReplace: (rowIndex, columnId, newValue, oldValue) => {
       console.log(`[showcase] replace (${rowIndex}, ${columnId}): ${String(oldValue)} → ${newValue}`);

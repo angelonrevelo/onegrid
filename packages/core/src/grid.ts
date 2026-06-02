@@ -319,12 +319,17 @@ export class Grid {
   // pixels.
   private readonly rowDragColumnId: string | undefined;
   private readonly onRowReorder:
-    | ((fromRow: number, toRow: number) => void)
+    | ((fromRows: ReadonlyArray<number>, toRow: number) => void)
     | undefined;
   private rowDragCandidateRow: number | null = null;
   private rowDragCandidateClientY = 0;
   private rowDragActiveRow: number | null = null;
   private rowDragInsertIndex = 0;
+  /** The full set of rows that travel together when a drag is active
+   *  (multi-row since v1.2). Captured at drag-start: if the grabbed row
+   *  is inside the current selection, this is every selected row;
+   *  otherwise it is just the grabbed row. Always ascending. */
+  private rowDragRows: number[] = [];
   private rowDragIndicatorEl: HTMLDivElement | null = null;
   /** Drag insertion index (the column index where the dragged column
    *  would land if dropped now). Range: [0, this.columns.length]. */
@@ -976,6 +981,17 @@ export class Grid {
 
   getSelection(): SelectionSnapshot {
     return this.selection.snapshot();
+  }
+
+  /** Ascending, de-duplicated list of every row index touched by any
+   *  current selection range. Used by row drag-reorder to decide the
+   *  travelling block. Empty when nothing is selected. */
+  private selectedRowIndices(): number[] {
+    const seen = new Set<number>();
+    for (const norm of this.selection.normalizedRanges()) {
+      for (let r = norm.rowStart; r <= norm.rowEnd; r++) seen.add(r);
+    }
+    return Array.from(seen).sort((a, b) => a - b);
   }
 
   selectCell(pos: CellPosition): void {
@@ -1784,8 +1800,19 @@ export class Grid {
     // 6-px threshold; then track the cursor's nearest row boundary.
     if (this.rowDragCandidateRow !== null) {
       if (Math.abs(e.clientY - this.rowDragCandidateClientY) > 6) {
-        this.rowDragActiveRow = this.rowDragCandidateRow;
+        const grabbed = this.rowDragCandidateRow;
+        this.rowDragActiveRow = grabbed;
         this.rowDragCandidateRow = null;
+        // Capture the travelling set at drag-start (multi-row since
+        // v1.2). If the grabbed row is part of the current selection,
+        // every selected row moves as one block; otherwise just the
+        // grabbed row. Snapshot here so later selection changes during
+        // the drag don't alter what moves.
+        const selectedRows = this.selectedRowIndices();
+        this.rowDragRows =
+          selectedRows.length > 1 && selectedRows.includes(grabbed)
+            ? selectedRows
+            : [grabbed];
         this.ensureRowDragIndicator();
       }
     }
@@ -1897,19 +1924,31 @@ export class Grid {
       this.scheduleRender();
       return;
     }
-    // Row drag-reorder finalize (wave 26). The grid doesn't own the row
-    // store, so we just emit `onRowReorder(fromRow, toRow)` — the adopter
-    // performs the actual data mutation. Insertion index semantics match
-    // column-reorder: `to > from` means the target index shifts by -1
-    // after the splice.
+    // Row drag-reorder finalize (wave 26; multi-row since v1.2). The grid
+    // doesn't own the row store, so we just emit
+    // `onRowReorder(fromRows, toRow)` — the adopter performs the actual
+    // data mutation. `toRow` is the insertion index in the original row
+    // coordinate space; the adopter removes every `fromRows` entry and
+    // re-inserts the block at the position `toRow` refers to after
+    // removal.
     if (this.rowDragActiveRow !== null) {
-      const from = this.rowDragActiveRow;
+      const fromRows = this.rowDragRows.length > 0 ? this.rowDragRows : [this.rowDragActiveRow];
       const to = this.rowDragInsertIndex;
       this.rowDragActiveRow = null;
+      this.rowDragRows = [];
       this.removeRowDragIndicator();
-      const targetIndex = to > from ? to - 1 : to;
-      if (targetIndex !== from && this.onRowReorder) {
-        this.onRowReorder(from, targetIndex);
+      // No-op detection: dropping a contiguous block back inside (or at
+      // either edge of) the run it already occupies changes nothing.
+      // `fromRows` is ascending; it is contiguous when its span equals
+      // its length. A contiguous run [lo..hi] is unchanged by an
+      // insertion index in [lo, hi+1]. Non-contiguous selections always
+      // relocate into a single block, so they are never a no-op.
+      const lo = fromRows[0] ?? 0;
+      const hi = fromRows[fromRows.length - 1] ?? 0;
+      const contiguous = hi - lo + 1 === fromRows.length;
+      const noop = contiguous && to >= lo && to <= hi + 1;
+      if (!noop && this.onRowReorder) {
+        this.onRowReorder(fromRows, to);
       }
       this.suppressSelectionUntilUp = false;
       try {

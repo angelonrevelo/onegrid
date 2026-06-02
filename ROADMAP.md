@@ -721,6 +721,18 @@ split (one file per Excel category + `_shared` for helpers +
   edges when their natural scroll position would scroll them off.
   Verified in showcase: row 1 stayed at the top after Ctrl+End jumped
   to row 100,000. 110/110 core tests pass.
+- Wave 27 (2026-06-02) — **v1.2 tail** — closes the milestone.
+  Multi-row drag-reorder: `onRowReorder` now emits
+  `(fromRows: ReadonlyArray<number>, toRow: number)`; drag-start
+  snapshots the travelling block (grabbed row inside the selection →
+  whole block moves; otherwise just that row), and a contiguous block
+  dropped back inside its own run is suppressed as a no-op (breaking:
+  first arg was `fromRow: number`). Pinned column resize was found to
+  already work — `columnAtRightBoundary` has covered the frozen band
+  since the v1.2 starter — so the work was the missing regression
+  coverage: `column-resize.test.ts` (5 tests) drives the resize FSM over
+  frozen + scrolling boundaries with min/max clamp; `row-reorder.test.ts`
+  grew to 11 tests driving the full drag. 123/123 core tests pass.
 
 **Chunk A (OOXML interop) status as of 2026-06-02.** `@onegrid/xlsx`
 scaffold shipped: package manifest + tsup/tsconfig + worksheet
@@ -881,7 +893,7 @@ import '@onegrid/formula/excel-compat';        // +460 functions
 import '@onegrid/formula/excel-compat/financial';  // just the finance subset
 ```
 
-### v1.2.0 — "interaction polish" (NEW — feature-parity track)  🟡 **Substantively complete — 9 of 11 items shipped across waves 24–26 (2026-06-02); pinned column resize + multi-row drag-reorder remain as small follow-ups.**
+### v1.2.0 — "interaction polish" (NEW — feature-parity track)  ✅ **Complete — 11 of 11 items shipped across waves 24–27 (2026-06-02).**
 
 Closes the most-visible UX gaps surfacing in adopter feedback. Each
 item is roughly half-a-session of work; the milestone is one batch.
@@ -903,13 +915,27 @@ item is roughly half-a-session of work; the milestone is one batch.
   110/110 core tests. Verified in real Chrome — pinned row 1 stayed at
   top after Ctrl+End scrolled to row 100,000.
 
-**Remaining gap (small).** Two v1.2 items that haven't shipped:
-- 🔵 **Pinned column resize** — currently frozen columns are
-  fixed-width. Same-shape problem as wave-24 column resize but on the
-  frozen band. ~30 min.
-- 🔵 **Multi-row drag-drop reorder** — wave 26 ships single-row drag.
-  Multi-row needs selection-aware drag (collect every selected row,
-  emit `onRowReorder` with an array). ~1 hr.
+**Wave 27 (2026-06-02) — v1.2 tail.** Closed the last two items.
+
+- ✅ **Pinned column resize** — turned out to already work: the
+  `columnAtRightBoundary` hit-test has handled the frozen band since the
+  v1.2 column-resize starter, and the resize move handler recomputes
+  `frozenWidth` via `setColumns` on each frame. Wave 27 added the missing
+  regression coverage — `column-resize.test.ts` drives the
+  pointerdown → pointermove → pointerup state machine over frozen and
+  scrolling boundaries, including min/max clamp (5 tests). The earlier
+  "frozen columns are fixed-width" note was wrong.
+- ✅ **Multi-row drag-drop reorder** — `onRowReorder` now emits
+  `(fromRows: ReadonlyArray<number>, toRow: number)`. At drag-start the
+  grid snapshots the travelling block: if the grabbed row is inside the
+  current selection, every selected row moves as one block (Excel /
+  AG-Grid convention); otherwise just the grabbed row. `toRow` is the
+  insertion index in the original row coordinate space. No-op detection
+  suppresses the callback when a contiguous block drops back inside its
+  own run. `row-reorder.test.ts` now drives the full drag for single-row,
+  multi-row-block, grab-outside-selection, and four no-op cases (11
+  tests). **Breaking:** the callback's first argument changed from
+  `fromRow: number` to `fromRows: ReadonlyArray<number>`.
 
 **Wave 24 (2026-06-02).** Six features in one wave, all wired through
 the showcase live tab + verified in real Chrome via chrome-devtools

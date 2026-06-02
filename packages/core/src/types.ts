@@ -349,10 +349,22 @@ export interface GridOptions {
    *  Common values: the row-number column or a dedicated `id` column. */
   readonly rowDragColumnId?: string;
 
-  /** Wave 26. Fires when a row drag-and-drop lands. Adopters apply the
-   *  reorder to their data store (the grid never owns row data). */
+  /** Wave 26 (multi-row since v1.2). Fires when a row drag-and-drop
+   *  lands. Adopters apply the reorder to their data store (the grid
+   *  never owns row data).
+   *
+   *  `fromRows` is the ascending list of source row indices being moved.
+   *  When the dragged row is part of the current selection, every
+   *  selected row travels as one contiguous block (Excel / AG Grid
+   *  convention); otherwise it is the single dragged row. `toRow` is the
+   *  insertion index in the *original* row coordinate space — range
+   *  `[0, numRows]` — i.e. "drop the block so it lands before the row
+   *  that currently sits at `toRow`". The adopter removes every
+   *  `fromRows` entry and re-inserts the block at the position `toRow`
+   *  refers to after removal. The grid never fires when the drop is a
+   *  no-op (block would land back in place). */
   readonly onRowReorder?: (
-    fromRow: number,
+    fromRows: ReadonlyArray<number>,
     toRow: number,
   ) => void;
   /** Fires while the user drags a column-resize handle and again on
