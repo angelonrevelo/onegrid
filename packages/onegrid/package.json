@@ -46,5 +46,14 @@
   "publishConfig": {
     "access": "public"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CelestialBrain/onegrid.git",
+    "directory": "packages/onegrid"
+  },
+  "homepage": "https://github.com/CelestialBrain/onegrid#readme",
+  "bugs": {
+    "url": "https://github.com/CelestialBrain/onegrid/issues"
+  }
 }

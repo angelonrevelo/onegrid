@@ -38,5 +38,22 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CelestialBrain/onegrid.git",
+    "directory": "packages/migrate"
+  },
+  "homepage": "https://github.com/CelestialBrain/onegrid#readme",
+  "bugs": {
+    "url": "https://github.com/CelestialBrain/onegrid/issues"
+  },
+  "keywords": [
+    "grid",
+    "datagrid",
+    "table",
+    "data-grid",
+    "migration",
+    "schema"
+  ]
 }

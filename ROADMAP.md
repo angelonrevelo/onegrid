@@ -1219,8 +1219,21 @@ These are gates the **codebase doesn't ship** — they live in CI, infra,
 or external services. Each is a fix-it batch, not a feature milestone.
 
 **Distribution + reachability**
-- 🔴 **Publish to npm** — every dep is currently `workspace:*`;
-  nothing on the registry. Blocks every external adopter.
+- 🟡 **Publish to npm** — prep complete (2026-06-02); blocked only on
+  the `@onegrid` org claim + `NPM_TOKEN` secret (account actions the repo
+  can't self-serve — see [`PUBLISHING.md`](./PUBLISHING.md)). Done: all 44
+  publishable manifests carry `repository`/`homepage`/`bugs`/`keywords`/
+  `publishConfig.access:public`/`files`; every package has a `README` +
+  `LICENSE`; `.changeset/config.json` validates (removed a phantom
+  `@onegrid/docs` ignore entry that would have crashed the release
+  workflow); `release.yml` wires npm auth (`registry-url` +
+  `NODE_AUTH_TOKEN` — was missing, would have 401'd) and gates on
+  typecheck+test; `CHANGELOG.md` seeded for 1.0.0. Verified via
+  `pnpm -r publish --dry-run` (all 44 OK; tarballs = dist+README+LICENSE+
+  manifest only). First publish is `1.0.0` straight from current
+  manifests — no changeset needed. Flips to 🟢 once published. The
+  `workspace:*` deps are rewritten to real versions automatically by
+  `pnpm publish` (the `save-workspace-protocol: rolling` `.npmrc` setting).
 - 🔴 **Live demo URL** — `apps/playground` and the broader [`apps/showcase`](./apps/showcase) (every-package-wired-together demo, `0244521`) are local-only; no hosted preview yet. Vercel / Netlify / Cloudflare Pages configs ship with the showcase as of 2026-06-02 (`61af59e`'s follow-up); flips to 🟢 once a hosted URL exists.
 - 🔴 **Docs site** — `docs/*.md` are markdown only; no rendered site
   (`docs.onegrid.dev` or similar via Astro / Nextra / VitePress).
