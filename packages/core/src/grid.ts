@@ -36,6 +36,7 @@ import type {
   ComparisonFilter,
   ComparisonOperator,
   FilterModel,
+  PivotModel,
   SortModel,
 } from '@onegrid/protocol';
 
@@ -315,6 +316,18 @@ export class Grid {
     { op: ComparisonOperator; raw: string }
   >();
 
+  // Pivot side panel (v1.3). Binds columns to the three PivotModel bins.
+  // pivotBin maps columnId → 'rows' | 'columns' | 'values'; for a column
+  // in the values bin, pivotMeasureFn holds its aggregator. The composed
+  // PivotModel fires on every change.
+  private readonly pivotPanelEnabled: boolean;
+  private readonly onPivotChange:
+    | ((model: PivotModel) => void)
+    | undefined;
+  private pivotPanelEl: HTMLDivElement | null = null;
+  private readonly pivotBin = new Map<string, 'rows' | 'columns' | 'values'>();
+  private readonly pivotMeasureFn = new Map<string, AggregationType>();
+
   // Pinned rows + column groups + status bar.
   private pinnedTopRowSource: RowSource | undefined;
   private pinnedBottomRowSource: RowSource | undefined;
@@ -525,6 +538,20 @@ export class Grid {
     // Filter side panel (v1.3).
     this.filterPanelEnabled = options.enableFilterPanel ?? false;
     this.onFilterModelChange = options.onFilterModelChange;
+
+    // Pivot side panel (v1.3).
+    this.pivotPanelEnabled = options.enablePivotPanel ?? false;
+    this.onPivotChange = options.onPivotChange;
+    if (options.pivotModel) {
+      for (const id of options.pivotModel.rows) this.pivotBin.set(id, 'rows');
+      for (const id of options.pivotModel.columns) this.pivotBin.set(id, 'columns');
+      for (const m of options.pivotModel.measures) {
+        this.pivotBin.set(m.columnId, 'values');
+        if (AGGREGATOR_OPTIONS.some((o) => o.value === m.fn)) {
+          this.pivotMeasureFn.set(m.columnId, m.fn as AggregationType);
+        }
+      }
+    }
     if (options.expanded) {
       this.expanded = new Set(options.expanded);
     }
@@ -766,6 +793,15 @@ export class Grid {
       this.host.appendChild(this.filterPanelEl);
       this.renderFilterPanel();
       if (options.filterPanelOpen) this.openFilterPanel();
+    }
+
+    // Pivot side panel (v1.3): docked right-edge aside binding columns to
+    // the rows / columns / values bins.
+    if (this.pivotPanelEnabled) {
+      this.pivotPanelEl = this.buildSidePanel('Pivot', 'Pivot panel');
+      this.host.appendChild(this.pivotPanelEl);
+      this.renderPivotPanel();
+      if (options.pivotPanelOpen) this.openPivotPanel();
     }
 
     // Tooltip: a shared element re-targeted per hovered cell. Mounted
@@ -1116,6 +1152,8 @@ export class Grid {
     this.aggregationPanelEl = null;
     this.filterPanelEl?.remove();
     this.filterPanelEl = null;
+    this.pivotPanelEl?.remove();
+    this.pivotPanelEl = null;
     this.statusBarEl?.remove();
     this.statusBarEl = null;
     // Tear down any still-mounted detail panels so nested Grids /
@@ -2960,6 +2998,143 @@ export class Grid {
 
   closeFilterPanel(): void {
     if (this.filterPanelEl) this.filterPanelEl.style.display = 'none';
+  }
+
+  // ---- Pivot panel (v1.3) ----
+
+  /** One row per column: a bin <select> (unassigned / rows / columns /
+   *  values); a column in the values bin also gets an aggregator
+   *  <select>. Any change recomposes the PivotModel and fires
+   *  `onPivotChange`. (Drag-between-bins is a future UX nicety; the bin
+   *  picker gives the full model binding today.) */
+  private renderPivotPanel(): void {
+    const body = this.panelBody(this.pivotPanelEl);
+    if (!body) return;
+    body.replaceChildren();
+
+    const binOptions: ReadonlyArray<{ value: string; label: string }> = [
+      { value: 'none', label: '—' },
+      { value: 'rows', label: 'Rows' },
+      { value: 'columns', label: 'Columns' },
+      { value: 'values', label: 'Values' },
+    ];
+
+    for (const column of this.columns) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:4px;padding:3px 0;';
+      const name = document.createElement('span');
+      name.textContent = column.displayName ?? column.id;
+      name.style.cssText = 'flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+      const bin = document.createElement('select');
+      bin.setAttribute('aria-label', `Pivot bin for ${column.displayName ?? column.id}`);
+      bin.dataset.pivotBin = column.id;
+      bin.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 2px;cursor:pointer;flex:0 0 auto;';
+      const currentBin = this.pivotBin.get(column.id) ?? 'none';
+      for (const o of binOptions) {
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        if (o.value === currentBin) opt.selected = true;
+        bin.appendChild(opt);
+      }
+
+      // Aggregator picker — only meaningful for the values bin.
+      const agg = document.createElement('select');
+      agg.setAttribute('aria-label', `Pivot measure for ${column.displayName ?? column.id}`);
+      agg.dataset.pivotAgg = column.id;
+      agg.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 2px;cursor:pointer;flex:0 0 auto;';
+      const currentAgg = this.pivotMeasureFn.get(column.id) ?? 'sum';
+      for (const o of AGGREGATOR_OPTIONS) {
+        if (o.value === 'none') continue; // a measure always has an aggregator
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        if (o.value === currentAgg) opt.selected = true;
+        agg.appendChild(opt);
+      }
+      agg.style.display = currentBin === 'values' ? 'block' : 'none';
+
+      bin.addEventListener('change', () => {
+        if (bin.value === 'none') this.pivotBin.delete(column.id);
+        else this.pivotBin.set(column.id, bin.value as 'rows' | 'columns' | 'values');
+        // A column entering the values bin gets a default aggregator.
+        if (bin.value === 'values' && !this.pivotMeasureFn.has(column.id)) {
+          this.pivotMeasureFn.set(column.id, agg.value as AggregationType);
+        }
+        agg.style.display = bin.value === 'values' ? 'block' : 'none';
+        this.emitPivotChange();
+      });
+      agg.addEventListener('change', () => {
+        this.pivotMeasureFn.set(column.id, agg.value as AggregationType);
+        if (this.pivotBin.get(column.id) === 'values') this.emitPivotChange();
+      });
+
+      row.appendChild(name);
+      row.appendChild(bin);
+      row.appendChild(agg);
+      body.appendChild(row);
+    }
+  }
+
+  /** Compose the PivotModel from the bin assignments, preserving column
+   *  order within each bin. Values-bin columns become measures with their
+   *  chosen aggregator (default 'sum') and alias = column id. */
+  private composePivotModel(): PivotModel {
+    const rows: string[] = [];
+    const columns: string[] = [];
+    const measures: Aggregation[] = [];
+    for (const column of this.columns) {
+      const bin = this.pivotBin.get(column.id);
+      if (bin === 'rows') rows.push(column.id);
+      else if (bin === 'columns') columns.push(column.id);
+      else if (bin === 'values') {
+        measures.push({
+          columnId: column.id,
+          fn: this.pivotMeasureFn.get(column.id) ?? 'sum',
+          alias: column.id,
+        });
+      }
+    }
+    return { rows, columns, measures };
+  }
+
+  private emitPivotChange(): void {
+    this.onPivotChange?.(this.composePivotModel());
+  }
+
+  /** Assign a column to a pivot bin (or 'none' to unassign) and fire
+   *  `onPivotChange`. Imperative entry point mirroring the panel. */
+  setPivotBin(columnId: string, bin: 'none' | 'rows' | 'columns' | 'values'): void {
+    const prev = this.pivotBin.get(columnId);
+    const nextBin = bin === 'none' ? undefined : bin;
+    if (prev === nextBin) return;
+    if (nextBin === undefined) this.pivotBin.delete(columnId);
+    else {
+      this.pivotBin.set(columnId, nextBin);
+      if (nextBin === 'values' && !this.pivotMeasureFn.has(columnId)) {
+        this.pivotMeasureFn.set(columnId, 'sum');
+      }
+    }
+    this.renderPivotPanel();
+    this.emitPivotChange();
+  }
+
+  /** Current composed PivotModel (copy). */
+  getPivotModel(): PivotModel {
+    return this.composePivotModel();
+  }
+
+  openPivotPanel(): void {
+    if (this.pivotPanelEl) this.pivotPanelEl.style.display = 'flex';
+  }
+
+  closePivotPanel(): void {
+    if (this.pivotPanelEl) this.pivotPanelEl.style.display = 'none';
   }
 
   /** Position the band + each input over its column. Called from

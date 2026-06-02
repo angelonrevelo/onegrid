@@ -772,6 +772,22 @@ split (one file per Excel category + `_shared` for helpers +
   UI — consumer wires to `@onegrid/data` `filterIndex()`; distinct from
   the per-keystroke `floatingFilters` row. `filter-panel.test.ts` (12
   tests, incl. batching: edits don't fire pre-Apply). 158/158 core tests.
+- Wave 31 (2026-06-02) — **v1.3 tool panels, part 4** — pivot side panel,
+  completing all four panels. `enablePivotPanel: true` docks a right-edge
+  aside (reuses `buildSidePanel`) with a per-column bin picker (none /
+  rows / columns / values); a values-bin column reveals an aggregator
+  picker (default sum). Each change composes the full protocol
+  `PivotModel` — rows + columns ordered by column position, one measure
+  per values column (alias = id) — and fires `onPivotChange(model)`. Seed
+  via `pivotModel`; `openPivotPanel()` / `closePivotPanel()` /
+  `pivotPanelOpen`; imperative `setPivotBin()` / `getPivotModel()`. Pure
+  UI — consumer wires to `@onegrid/data` `pivot()`.
+  `pivot-panel.test.ts` (13 tests, incl. bin-order preservation +
+  values-bin default-sum-then-aggregator). 171/171 core tests. Open item:
+  drag-between-bins is a future UX nicety — the bin picker gives the full
+  model binding today. **v1.3 tool-panel set complete (waves 28–31);**
+  the milestone's non-panel items (status-bar plugin surface,
+  loading/no-rows overlays, controlled-state) remain.
 
 **Chunk A (OOXML interop) status as of 2026-06-02.** `@onegrid/xlsx`
 scaffold shipped: package manifest + tsup/tsconfig + worksheet
@@ -1081,7 +1097,7 @@ MCP. 96/96 core tests pass.
   (which covers compute-time customization; slots cover render-time
   component substitution).
 
-### v1.3.0 — "tool panels + UI surfaces"  🟡 **In progress — group bar + aggregation + filter panels shipped (waves 28–30, 2026-06-02); pivot panel next.**
+### v1.3.0 — "tool panels + UI surfaces"  🟡 **All four tool panels shipped (waves 28–31, 2026-06-02); status-bar plugin surface + controlled-state overlays remain.**
 
 Surfaces every grid library is expected to ship as out-of-the-box UI.
 Today the column tool panel + the group bar exist.
@@ -1101,8 +1117,16 @@ reuse only TYPE-ONLY imports of the `@onegrid/protocol` model shapes.
   "add column" picker. The grid owns the ordered list as UI state and
   emits `onRowGrouping(columnIds: string[])` on every change; seed it
   with `groupColumns`. Imperative `setGroupColumns()` / `getGroupColumns()`.
-- **Pivot side panel UI** — drag rows / columns / values bins; updates
-  the PivotModel; the existing pivot compute path consumes it.
+- ✅ **Pivot side panel UI** (wave 31) — `enablePivotPanel: true` docks a
+  right-edge aside (reuses `buildSidePanel`) binding each column to one of
+  the three `PivotModel` bins via a bin picker (rows / columns / values);
+  a values-bin column also gets an aggregator picker (default sum). Any
+  change composes the full `PivotModel` (rows + columns ordered by column
+  position; one measure per values column, alias = id) and fires
+  `onPivotChange(model)`. Seed via `pivotModel`; imperative
+  `setPivotBin()` / `getPivotModel()`. The consumer feeds it to
+  `@onegrid/data` `pivot()`. (Drag-between-bins is a future UX nicety; the
+  bin picker gives the full model binding today.)
 - ✅ **Filter side panel** (wave 30) — `enableFilterPanel: true` docks a
   right-edge aside (reuses the wave-29 `buildSidePanel` shell) with a
   per-column operator picker (the full protocol `ComparisonOperator` set)

@@ -285,6 +285,14 @@ function WaveControls({
       // adopter passes it to @onegrid/data filterIndex(). Here we log it.
       console.log(`[showcase] filter model:`, model);
     },
+    enablePivotPanel: true,
+    onPivotChange: (model) => {
+      // v1.3 wave 31: the composed PivotModel. An adopter passes it to
+      // @onegrid/data pivot() and swaps in the pivoted columns + rows.
+      console.log(
+        `[showcase] pivot: rows=[${model.rows.join(',')}] cols=[${model.columns.join(',')}] vals=[${model.measures.map((m) => `${m.fn}(${m.columnId})`).join(',')}]`,
+      );
+    },
     getRowMeta: (rowIndex) => {
       // Wave 26: pin the first row to the top and the last row to the
       // bottom of the visible band. Demonstrates mid-table row pinning
@@ -327,6 +335,7 @@ function WaveControls({
         <Btn onClick={() => grid?.openFind()}>Find (Ctrl+F)</Btn>
         <Btn onClick={() => grid?.openAggregationPanel()}>Aggregations</Btn>
         <Btn onClick={() => grid?.openFilterPanel()}>Filters</Btn>
+        <Btn onClick={() => grid?.openPivotPanel()}>Pivot</Btn>
       </div>
       <div
         ref={ref}

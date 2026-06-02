@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { SelectionSnapshot } from './selection';
-import type { AggregationModel, FilterModel, SortModel } from '@onegrid/protocol';
+import type { AggregationModel, FilterModel, PivotModel, SortModel } from '@onegrid/protocol';
 
 /**
  * Per-column configuration. Width is the only required visual property; the
@@ -685,6 +685,24 @@ export interface GridOptions {
    *  the input on commas into `values`. Pass it to `@onegrid/data`
    *  filterIndex(). */
   readonly onFilterModelChange?: (model: FilterModel) => void;
+
+  /** v1.3. Show the pivot side panel — a docked aside binding columns to
+   *  the three `PivotModel` bins (rows / columns / values). Each column
+   *  has a bin picker; a column in the values bin also gets an aggregator
+   *  picker. Default false. */
+  readonly enablePivotPanel?: boolean;
+
+  /** v1.3. Start the pivot panel open. Default false. */
+  readonly pivotPanelOpen?: boolean;
+
+  /** v1.3. Seed the pivot bins from an existing PivotModel. */
+  readonly pivotModel?: PivotModel;
+
+  /** v1.3. Fires when any pivot bin assignment or value-aggregator
+   *  changes. Receives the full composed `PivotModel` (rows + columns are
+   *  ordered column-id lists; measures is one `Aggregation` per
+   *  values-bin column). Pass it to `@onegrid/data` pivot(). */
+  readonly onPivotChange?: (model: PivotModel) => void;
 }
 
 export interface ColumnGroupDef {
