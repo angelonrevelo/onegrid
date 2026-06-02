@@ -4,6 +4,8 @@
 
 ```ts
 
+import { AggregationModel } from '@onegrid/protocol';
+import { AggregationType } from '@onegrid/protocol';
 import { BlockRequest } from '@onegrid/protocol';
 import { BlockResponse } from '@onegrid/protocol';
 import { DataSource } from '@onegrid/protocol';
@@ -186,6 +188,8 @@ export class Grid {
     cancelEdit(): void;
     // (undocumented)
     clearSelection(): void;
+    // (undocumented)
+    closeAggregationPanel(): void;
     closeFind(): void;
     commitEdit(): void | Promise<void>;
     copySelectionToClipboard(): Promise<string>;
@@ -195,6 +199,7 @@ export class Grid {
     findPrev(): boolean;
     flashCell(rowIndex: number, columnId: string): void;
     flashRow(rowIndex: number): void;
+    getAggregationModel(): AggregationModel;
     getColumns(): ReadonlyArray<ColumnDef>;
     getFindQuery(): string;
     getGroupColumns(): string[];
@@ -218,6 +223,8 @@ export class Grid {
     isEditing(): boolean;
     // (undocumented)
     isExpanded(rowIndex: number): boolean;
+    // (undocumented)
+    openAggregationPanel(): void;
     openFind(): void;
     refresh(): void;
     replaceAll(newValue: string): number;
@@ -234,6 +241,7 @@ export class Grid {
     //
     // (undocumented)
     selectCell(pos: CellPosition): void;
+    setColumnAggregator(columnId: string, fn: 'none' | AggregationType): void;
     setColumns(columns: ReadonlyArray<ColumnDef>): void;
     setExpanded(expanded: ReadonlySet<number> | ReadonlyArray<number>): void;
     setFindQuery(query: string): void;
@@ -253,10 +261,13 @@ export interface GridMeta {
 
 // @public (undocumented)
 export interface GridOptions {
+    readonly aggregationPanelOpen?: boolean;
+    readonly aggregations?: AggregationModel;
     readonly columnGroups?: ReadonlyArray<ColumnGroupDef>;
     readonly columns: ReadonlyArray<ColumnDef>;
     readonly detailHeight?: number;
     readonly editable?: boolean | ((rowIndex: number, columnId: string) => boolean);
+    readonly enableAggregationPanel?: boolean;
     readonly enableColumnReorder?: boolean;
     readonly enableColumnResize?: boolean;
     readonly enableFillHandle?: boolean;
@@ -279,6 +290,7 @@ export interface GridOptions {
     readonly loadingOverlay?: (host: HTMLElement) => void;
     readonly meta?: GridMeta;
     readonly noRowsOverlay?: (host: HTMLElement) => void;
+    readonly onAggregationChange?: (model: AggregationModel) => void;
     readonly onBeginEdit?: (rowIndex: number, columnId: string) => void;
     readonly onCellEdit?: (rowIndex: number, columnId: string, newValue: string, oldValue: unknown) => void;
     readonly onColumnReorder?: (fromIndex: number, toIndex: number, columnId: string) => void;

@@ -746,6 +746,19 @@ split (one file per Excel category + `_shared` for helpers +
   callback-payload driven). 135/135 core tests. Open item: the bar does
   not auto-refresh pill labels on `setColumns()` (avoids rebuilding 60×/s
   during a column-resize drag); fine for static column sets.
+- Wave 29 (2026-06-02) — **v1.3 tool panels, part 2** — aggregation side
+  panel. `enableAggregationPanel: true` docks a right-edge aside
+  (floats over the data band via a shared `buildSidePanel` shell — no
+  layout-math change) with one aggregator `<select>` per column. The
+  grid owns a `columnId → AggregationType` map and composes the full
+  protocol `AggregationModel` (alias = column id, column order) on each
+  change, firing `onAggregationChange(model)`. Seed via `aggregations`;
+  `openAggregationPanel()` / `closeAggregationPanel()` /
+  `aggregationPanelOpen`; imperative `setColumnAggregator()` /
+  `getAggregationModel()`. Pure UI — consumer wires to `@onegrid/data`
+  `aggregate()` / `groupRows()`. `aggregation-panel.test.ts` (11 tests).
+  146/146 core tests. The `buildSidePanel` shell is reused by the
+  filter + pivot panels (waves 30–31).
 
 **Chunk A (OOXML interop) status as of 2026-06-02.** `@onegrid/xlsx`
 scaffold shipped: package manifest + tsup/tsconfig + worksheet
@@ -1055,7 +1068,7 @@ MCP. 96/96 core tests pass.
   (which covers compute-time customization; slots cover render-time
   component substitution).
 
-### v1.3.0 — "tool panels + UI surfaces"  🟡 **In progress — group bar shipped (wave 28, 2026-06-02); aggregation / filter / pivot panels next.**
+### v1.3.0 — "tool panels + UI surfaces"  🟡 **In progress — group bar + aggregation panel shipped (waves 28–29, 2026-06-02); filter / pivot panels next.**
 
 Surfaces every grid library is expected to ship as out-of-the-box UI.
 Today the column tool panel + the group bar exist.
@@ -1079,7 +1092,16 @@ reuse only TYPE-ONLY imports of the `@onegrid/protocol` model shapes.
   the PivotModel; the existing pivot compute path consumes it.
 - **Filter side panel** — every column's filter accessible from one
   panel (current: floating filter row + per-column popovers).
-- **Aggregation side panel** — per-group-by-column aggregator picker.
+- ✅ **Aggregation side panel** (wave 29) — `enableAggregationPanel: true`
+  docks a right-edge aside (floats over the data band — no layout-math
+  change) with one aggregator picker per column (none / sum / avg /
+  count / countDistinct / min / max / first / last). The grid owns a
+  `columnId → AggregationType` map and composes the full
+  `AggregationModel` (alias = column id) on each change, firing
+  `onAggregationChange(model)`. Seed via `aggregations`; toggle with
+  `openAggregationPanel()` / `closeAggregationPanel()` (or
+  `aggregationPanelOpen: true`); imperative `setColumnAggregator()` /
+  `getAggregationModel()`.
 - **Status-bar plugin surface** — adopters add per-grid panels
   (selection / row-count / KPIs); extends the existing status bar
   which has fixed selection-aggregate slots only.

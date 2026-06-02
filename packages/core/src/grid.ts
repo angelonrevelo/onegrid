@@ -29,7 +29,12 @@ import {
   type ValidationResult,
 } from './types';
 import { SelectionModel, type CellPosition, type SelectionSnapshot } from './selection';
-import type { SortModel } from '@onegrid/protocol';
+import type {
+  Aggregation,
+  AggregationModel,
+  AggregationType,
+  SortModel,
+} from '@onegrid/protocol';
 
 import {
   VIRTUAL_SCROLL_CAP_PX,
@@ -51,6 +56,22 @@ const STATUS_BAR_HEIGHT = 24;
 const COLUMN_GROUP_BAND_HEIGHT = 24;
 const FLOATING_FILTER_ROW_HEIGHT = 28;
 const GROUP_BAR_HEIGHT = 36;
+const SIDE_PANEL_WIDTH = 240;
+
+/** Aggregator picker options (v1.3). 'none' clears the column's entry;
+ *  the rest map 1:1 to protocol AggregationType. Module-level so the
+ *  aggregation + pivot panels share one source of truth. */
+const AGGREGATOR_OPTIONS: ReadonlyArray<{ value: 'none' | AggregationType; label: string }> = [
+  { value: 'none', label: '—' },
+  { value: 'sum', label: 'Sum' },
+  { value: 'avg', label: 'Avg' },
+  { value: 'count', label: 'Count' },
+  { value: 'countDistinct', label: 'Count distinct' },
+  { value: 'min', label: 'Min' },
+  { value: 'max', label: 'Max' },
+  { value: 'first', label: 'First' },
+  { value: 'last', label: 'Last' },
+];
 
 interface PerformanceWithMemory extends Performance {
   readonly memory?: {
@@ -226,6 +247,16 @@ export class Grid {
    *  no pill drag is active. Drives the live insertion caret. */
   private groupPillDragFrom = -1;
   private groupPillDragTo = -1;
+
+  // Aggregation side panel (v1.3). Docked aside listing every column with
+  // an aggregator picker. The panel owns a columnId → AggregationType map
+  // as UI state and composes the full AggregationModel on each change.
+  private readonly aggregationPanelEnabled: boolean;
+  private readonly onAggregationChange:
+    | ((model: AggregationModel) => void)
+    | undefined;
+  private aggregationPanelEl: HTMLDivElement | null = null;
+  private aggregatorByColumn = new Map<string, AggregationType>();
 
   // Pinned rows + column groups + status bar.
   private pinnedTopRowSource: RowSource | undefined;
@@ -420,6 +451,19 @@ export class Grid {
     this.groupBarEnabled = options.enableGroupBar ?? false;
     this.onRowGrouping = options.onRowGrouping;
     this.groupColumns = options.groupColumns ? [...options.groupColumns] : [];
+
+    // Aggregation side panel (v1.3).
+    this.aggregationPanelEnabled = options.enableAggregationPanel ?? false;
+    this.onAggregationChange = options.onAggregationChange;
+    if (options.aggregations) {
+      for (const a of options.aggregations) {
+        // Only seed builtin types; custom string keys aren't pickable in
+        // the panel, so they'd have no <option> to select.
+        if (AGGREGATOR_OPTIONS.some((o) => o.value === a.fn)) {
+          this.aggregatorByColumn.set(a.columnId, a.fn as AggregationType);
+        }
+      }
+    }
     if (options.expanded) {
       this.expanded = new Set(options.expanded);
     }
@@ -643,6 +687,16 @@ export class Grid {
       this.host.appendChild(bar);
       this.groupBarEl = bar;
       this.renderGroupBar();
+    }
+
+    // Aggregation side panel (v1.3): a docked aside on the right edge,
+    // floating over the data band (no layout-math change). Hidden until
+    // opened unless aggregationPanelOpen was set.
+    if (this.aggregationPanelEnabled) {
+      this.aggregationPanelEl = this.buildSidePanel('Aggregation', 'Aggregation panel');
+      this.host.appendChild(this.aggregationPanelEl);
+      this.renderAggregationPanel();
+      if (options.aggregationPanelOpen) this.openAggregationPanel();
     }
 
     // Tooltip: a shared element re-targeted per hovered cell. Mounted
@@ -989,6 +1043,8 @@ export class Grid {
     this.floatingFilterInputs.clear();
     this.groupBarEl?.remove();
     this.groupBarEl = null;
+    this.aggregationPanelEl?.remove();
+    this.aggregationPanelEl = null;
     this.statusBarEl?.remove();
     this.statusBarEl = null;
     // Tear down any still-mounted detail panels so nested Grids /
@@ -2567,6 +2623,135 @@ export class Grid {
   /** Current group-by column ids, in nesting order. */
   getGroupColumns(): string[] {
     return [...this.groupColumns];
+  }
+
+  // ---------------------------------------------------------------------------
+  // Side panels (v1.3): aggregation / filter / pivot
+  // ---------------------------------------------------------------------------
+
+  /** Build an empty docked side panel shell (right edge, floats over the
+   *  data band — no layout-math change). Returns the element with a
+   *  header row (title + ✕ close) already mounted; callers fill the body
+   *  via a `[data-panel-body]` child. `display:none` until opened. Shared
+   *  by the aggregation / filter / pivot panels. */
+  private buildSidePanel(title: string, ariaLabel: string): HTMLDivElement {
+    const panel = document.createElement('div');
+    panel.setAttribute('role', 'region');
+    panel.setAttribute('aria-label', ariaLabel);
+    panel.style.cssText =
+      `position:absolute;top:0;right:0;bottom:0;width:${String(SIDE_PANEL_WIDTH)}px;` +
+      `background:${this.theme.headerBackground};color:${this.theme.text};` +
+      'border-left:1px solid #2a2f37;z-index:6;display:none;flex-direction:column;' +
+      `font-family:${this.theme.fontFamily};font-size:12px;` +
+      'box-shadow:-4px 0 12px rgba(0,0,0,0.35);box-sizing:border-box;';
+
+    const head = document.createElement('div');
+    head.style.cssText =
+      'display:flex;align-items:center;justify-content:space-between;' +
+      'padding:8px 10px;border-bottom:1px solid #2a2f37;flex:0 0 auto;';
+    const titleEl = document.createElement('span');
+    titleEl.textContent = title;
+    titleEl.style.cssText = 'font-weight:600;font-size:12px;';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = '✕';
+    close.setAttribute('aria-label', `Close ${title.toLowerCase()} panel`);
+    close.style.cssText =
+      `background:none;border:none;color:${this.theme.mutedText};cursor:pointer;font-size:12px;`;
+    close.addEventListener('click', () => {
+      panel.style.display = 'none';
+    });
+    head.appendChild(titleEl);
+    head.appendChild(close);
+    panel.appendChild(head);
+
+    const body = document.createElement('div');
+    body.dataset.panelBody = '';
+    body.style.cssText = 'flex:1 1 auto;overflow:auto;padding:6px 10px;';
+    panel.appendChild(body);
+
+    return panel;
+  }
+
+  private panelBody(panel: HTMLDivElement | null): HTMLDivElement | null {
+    return panel ? (panel.querySelector('[data-panel-body]') as HTMLDivElement | null) : null;
+  }
+
+  /** One labelled row per column, each with an aggregator <select>.
+   *  Selecting a type updates `aggregatorByColumn` and fires the composed
+   *  AggregationModel. */
+  private renderAggregationPanel(): void {
+    const body = this.panelBody(this.aggregationPanelEl);
+    if (!body) return;
+    body.replaceChildren();
+    for (const column of this.columns) {
+      const row = document.createElement('label');
+      row.style.cssText =
+        'display:flex;align-items:center;justify-content:space-between;gap:8px;' +
+        'padding:3px 0;white-space:nowrap;';
+      const name = document.createElement('span');
+      name.textContent = column.displayName ?? column.id;
+      name.style.cssText = 'overflow:hidden;text-overflow:ellipsis;';
+      const sel = document.createElement('select');
+      sel.setAttribute('aria-label', `Aggregator for ${column.displayName ?? column.id}`);
+      sel.dataset.columnId = column.id;
+      sel.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 4px;cursor:pointer;';
+      const current = this.aggregatorByColumn.get(column.id) ?? 'none';
+      for (const opt of AGGREGATOR_OPTIONS) {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        if (opt.value === current) o.selected = true;
+        sel.appendChild(o);
+      }
+      sel.addEventListener('change', () => {
+        this.setColumnAggregator(column.id, sel.value as 'none' | AggregationType);
+      });
+      row.appendChild(name);
+      row.appendChild(sel);
+      body.appendChild(row);
+    }
+  }
+
+  /** Compose the current AggregationModel from `aggregatorByColumn`, in
+   *  column order. Each entry's alias defaults to the column id. */
+  private composeAggregationModel(): Aggregation[] {
+    const model: Aggregation[] = [];
+    for (const column of this.columns) {
+      const fn = this.aggregatorByColumn.get(column.id);
+      if (fn) model.push({ columnId: column.id, fn, alias: column.id });
+    }
+    return model;
+  }
+
+  /** Set (or clear, with 'none') a single column's aggregator and fire
+   *  `onAggregationChange` with the recomposed model. Public imperative
+   *  entry point; also used by the panel's own <select> handlers. */
+  setColumnAggregator(columnId: string, fn: 'none' | AggregationType): void {
+    const prev = this.aggregatorByColumn.get(columnId);
+    if (fn === 'none') {
+      if (prev === undefined) return;
+      this.aggregatorByColumn.delete(columnId);
+    } else {
+      if (prev === fn) return;
+      this.aggregatorByColumn.set(columnId, fn);
+    }
+    this.onAggregationChange?.(this.composeAggregationModel());
+  }
+
+  /** Current composed AggregationModel (copy). */
+  getAggregationModel(): AggregationModel {
+    return this.composeAggregationModel();
+  }
+
+  openAggregationPanel(): void {
+    if (this.aggregationPanelEl) this.aggregationPanelEl.style.display = 'flex';
+  }
+
+  closeAggregationPanel(): void {
+    if (this.aggregationPanelEl) this.aggregationPanelEl.style.display = 'none';
   }
 
   /** Position the band + each input over its column. Called from

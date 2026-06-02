@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { SelectionSnapshot } from './selection';
-import type { SortModel } from '@onegrid/protocol';
+import type { AggregationModel, SortModel } from '@onegrid/protocol';
 
 /**
  * Per-column configuration. Width is the only required visual property; the
@@ -644,6 +644,28 @@ export interface GridOptions {
    *  reorder). Receives the new ordered column-id list — drop it
    *  straight into `GroupingModel.columns`. Empty array = ungrouped. */
   readonly onRowGrouping?: (columnIds: string[]) => void;
+
+  /** v1.3. Show the aggregation side panel — a docked aside listing every
+   *  column with an aggregator picker (none / sum / avg / count /
+   *  countDistinct / min / max / first / last). Default false. Hidden
+   *  until `openAggregationPanel()` (or starts open via
+   *  `aggregationPanelOpen`). */
+  readonly enableAggregationPanel?: boolean;
+
+  /** v1.3. Start the aggregation panel open. Only meaningful with
+   *  `enableAggregationPanel`. Default false (toggle via
+   *  `openAggregationPanel()` / `closeAggregationPanel()`). */
+  readonly aggregationPanelOpen?: boolean;
+
+  /** v1.3. Seed aggregator pickers from an existing AggregationModel.
+   *  Each entry's `columnId` + `fn` sets that column's picker. */
+  readonly aggregations?: AggregationModel;
+
+  /** v1.3. Fires when any aggregator picker changes. Receives the full
+   *  composed `AggregationModel` (one `Aggregation` per column whose
+   *  picker is not "none", `fn` = the chosen type, `alias` defaulting to
+   *  the column id). Pass it to `@onegrid/data` aggregate / groupRows. */
+  readonly onAggregationChange?: (model: AggregationModel) => void;
 }
 
 export interface ColumnGroupDef {
