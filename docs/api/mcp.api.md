@@ -7,7 +7,7 @@
 import { FilterModel } from '@onegrid/protocol';
 import { SortModel } from '@onegrid/protocol';
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface ColumnInfo {
     // (undocumented)
     readonly displayName: string;
@@ -17,7 +17,7 @@ export interface ColumnInfo {
     readonly type: string;
 }
 
-// @public
+// @beta
 export function createMcpServer(opts: McpServerOptions): {
     readonly handle: (req: JsonRpcRequest) => Promise<JsonRpcResponse>;
     readonly listTools: () => ReadonlyArray<{
@@ -31,7 +31,7 @@ export function createMcpServer(opts: McpServerOptions): {
     }>;
 };
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface JsonRpcRequest {
     // (undocumented)
     readonly id: number | string | null;
@@ -43,10 +43,10 @@ export interface JsonRpcRequest {
     readonly params?: unknown;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export type JsonRpcResponse = JsonRpcResponseOk | JsonRpcResponseError;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface JsonRpcResponseError {
     // (undocumented)
     readonly error: {
@@ -60,7 +60,7 @@ export interface JsonRpcResponseError {
     readonly jsonrpc: '2.0';
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface JsonRpcResponseOk {
     // (undocumented)
     readonly id: number | string | null;
@@ -70,7 +70,7 @@ export interface JsonRpcResponseOk {
     readonly result: unknown;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export const MCP_ERR: {
     readonly PARSE: -32700;
     readonly METHOD_NOT_FOUND: -32601;
@@ -80,7 +80,7 @@ export const MCP_ERR: {
     readonly DENIED: -32005;
 };
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface McpGridBridge {
     readonly getColumns: () => ReadonlyArray<ColumnInfo>;
     // (undocumented)
@@ -103,7 +103,7 @@ export interface McpGridBridge {
     readonly setSort: (sort: SortModel) => Promise<void> | void;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface McpServerOptions {
     // (undocumented)
     readonly bridge: McpGridBridge;
@@ -113,7 +113,7 @@ export interface McpServerOptions {
     };
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface ProposedMutation {
     // (undocumented)
     readonly columnId: string;
@@ -125,7 +125,7 @@ export interface ProposedMutation {
     readonly value: unknown;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface SelectionInfo {
     // (undocumented)
     readonly colEnd: number;
@@ -137,7 +137,7 @@ export interface SelectionInfo {
     readonly rowStart: number;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface ViewportInfo {
     // (undocumented)
     readonly totalRowCount: number;

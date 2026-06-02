@@ -4,7 +4,7 @@
 
 ```ts
 
-// @public (undocumented)
+// @beta (undocumented)
 export class Database {
     get currentRevision(): Revision;
     defineInput<T>(key: string, initial: T, eq?: Equals<T>): {
@@ -18,10 +18,10 @@ export class Database {
     get memoCount(): number;
 }
 
-// @public
+// @beta
 export type Equals<T> = (a: T, b: T) => boolean;
 
-// @public (undocumented)
+// @beta (undocumented)
 export type Revision = number;
 
 // (No @packageDocumentation comment for this package)

@@ -8,10 +8,10 @@ import { ColumnSchema } from '@onegrid/protocol';
 import { FilterNode } from '@onegrid/protocol';
 import { SortField } from '@onegrid/protocol';
 
-// @public
+// @beta
 export function buildPrompt(text: string, schema: ReadonlyArray<ColumnSchema>): string;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface FilterIntent {
     // (undocumented)
     readonly filter: FilterNode;
@@ -19,7 +19,7 @@ export interface FilterIntent {
     readonly kind: 'filter';
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface FormulaIntent {
     readonly expression: string;
     // (undocumented)
@@ -27,29 +27,29 @@ export interface FormulaIntent {
     readonly targetColumn: string;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export type Intent = FilterIntent | SortIntent | FormulaIntent | MutationIntent;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface IntentResult {
     readonly explanation?: string;
     // (undocumented)
     readonly intents: ReadonlyArray<Intent>;
 }
 
-// @public
+// @beta
 export function interpretIntent(text: string, schema: ReadonlyArray<ColumnSchema>, llm: LlmClient, opts?: {
     readonly temperature?: number;
 }): Promise<IntentResult>;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface LlmClient {
     readonly complete: (prompt: string, opts?: {
         readonly temperature?: number;
     }) => Promise<string>;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface MutationIntent {
     // (undocumented)
     readonly columnId: string;
@@ -61,13 +61,13 @@ export interface MutationIntent {
     readonly value: unknown;
 }
 
-// @public
+// @beta
 export function parseIntentHeuristic(text: string, schema: ReadonlyArray<ColumnSchema>): IntentResult;
 
-// @public
+// @beta
 export function parseLlmResponse(text: string, schema: ReadonlyArray<ColumnSchema>): IntentResult;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface SortIntent {
     // (undocumented)
     readonly kind: 'sort';

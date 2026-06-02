@@ -10,10 +10,10 @@ import { ColumnType } from '@onegrid/protocol';
 import { ResyncRequest } from '@onegrid/protocol';
 import { ResyncResponse } from '@onegrid/protocol';
 
-// @public
+// @beta
 export function bindOrmSync<TRow>(opts: BindOrmSyncOptions<TRow>): OrmSyncHandle;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface BindOrmSyncOptions<TRow> {
     // (undocumented)
     readonly cdc: CdcAdapter;
@@ -24,7 +24,7 @@ export interface BindOrmSyncOptions<TRow> {
     readonly onSnapshot?: () => void;
 }
 
-// @public
+// @beta
 export interface DrizzleColumnLike {
     // (undocumented)
     readonly columnType?: string;
@@ -36,10 +36,10 @@ export interface DrizzleColumnLike {
     readonly notNull?: boolean;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export function extractFromDrizzle<TRow>(opts: ExtractFromDrizzleOptions<TRow>): OrmModelDescriptor<TRow>;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface ExtractFromDrizzleOptions<TRow> {
     // (undocumented)
     readonly columns: ReadonlyArray<DrizzleColumnLike>;
@@ -49,13 +49,13 @@ export interface ExtractFromDrizzleOptions<TRow> {
     readonly table: string;
 }
 
-// @public
+// @beta
 export function extractFromKysely<TRow>(opts: ExtractFromDrizzleOptions<TRow>): OrmModelDescriptor<TRow>;
 
-// @public (undocumented)
+// @beta (undocumented)
 export function extractFromPrisma<TRow>(opts: ExtractFromPrismaOptions<TRow>): OrmModelDescriptor<TRow>;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface ExtractFromPrismaOptions<TRow> {
     // (undocumented)
     readonly fields: ReadonlyArray<PrismaFieldLike>;
@@ -65,7 +65,7 @@ export interface ExtractFromPrismaOptions<TRow> {
     readonly table: string;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface OrmColumnDescriptor {
     // (undocumented)
     readonly id: string;
@@ -75,7 +75,7 @@ export interface OrmColumnDescriptor {
     readonly type: ColumnType;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface OrmModelDescriptor<TRow = Record<string, unknown>> {
     // (undocumented)
     readonly columns: ReadonlyArray<OrmColumnDescriptor>;
@@ -85,14 +85,14 @@ export interface OrmModelDescriptor<TRow = Record<string, unknown>> {
     readonly table: string;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface OrmSyncHandle {
     readonly close: () => Promise<void> | void;
     readonly lastVersion: () => number;
     readonly resync: (req: ResyncRequest) => Promise<ResyncResponse>;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface PrismaFieldLike {
     // (undocumented)
     readonly isRequired?: boolean;
@@ -104,10 +104,10 @@ export interface PrismaFieldLike {
 
 // Warning: (ae-forgotten-export) The symbol "Schema" needs to be exported by the entry point index.d.ts
 //
-// @public
+// @beta
 export function toSchema(model: OrmModelDescriptor): Schema;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface TypedRowDiff<TRow> {
     // (undocumented)
     readonly kind: 'insert' | 'update' | 'delete';
