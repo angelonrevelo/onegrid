@@ -264,6 +264,13 @@ function WaveControls({
     enableRowResize: true,
     enableFind: true,
     rowDragColumnId: 'id',
+    enableGroupBar: true,
+    onRowGrouping: (columnIds) => {
+      // v1.3 wave 28: the grid emits the ordered group-by column list.
+      // An adopter wires this to @onegrid/data groupRows() and feeds the
+      // grouped RowSource back via setRowSource(). Here we just log it.
+      console.log(`[showcase] group by: [${columnIds.join(', ')}]`);
+    },
     getRowMeta: (rowIndex) => {
       // Wave 26: pin the first row to the top and the last row to the
       // bottom of the visible band. Demonstrates mid-table row pinning

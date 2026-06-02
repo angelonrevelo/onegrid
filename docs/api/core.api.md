@@ -197,6 +197,7 @@ export class Grid {
     flashRow(rowIndex: number): void;
     getColumns(): ReadonlyArray<ColumnDef>;
     getFindQuery(): string;
+    getGroupColumns(): string[];
     // (undocumented)
     getMetricsSnapshot(): MetricsSnapshot;
     // (undocumented)
@@ -236,6 +237,7 @@ export class Grid {
     setColumns(columns: ReadonlyArray<ColumnDef>): void;
     setExpanded(expanded: ReadonlySet<number> | ReadonlyArray<number>): void;
     setFindQuery(query: string): void;
+    setGroupColumns(columnIds: ReadonlyArray<string>): void;
     setLoading(value: boolean): void;
     setPinnedBottomRowSource(rowSource: RowSource | undefined): void;
     setPinnedTopRowSource(rowSource: RowSource | undefined): void;
@@ -259,6 +261,7 @@ export interface GridOptions {
     readonly enableColumnResize?: boolean;
     readonly enableFillHandle?: boolean;
     readonly enableFind?: boolean;
+    readonly enableGroupBar?: boolean;
     readonly enableRowResize?: boolean;
     readonly expanded?: ReadonlySet<number> | ReadonlyArray<number>;
     readonly flash?: {
@@ -269,6 +272,7 @@ export interface GridOptions {
     readonly frozenColumnCount?: number;
     readonly getDetailContent?: (rowIndex: number) => HTMLElement | null;
     readonly getRowMeta?: (rowIndex: number) => RowMeta | null | undefined;
+    readonly groupColumns?: ReadonlyArray<string>;
     readonly headerHeight?: number;
     readonly host: HTMLElement;
     readonly loading?: boolean;
@@ -297,6 +301,7 @@ export interface GridOptions {
     readonly onHeaderClick?: (columnId: string) => void;
     readonly onPaste?: (anchorRow: number, anchorCol: number, rows: ReadonlyArray<ReadonlyArray<string>>) => void;
     readonly onReplace?: (rowIndex: number, columnId: string, newValue: string, oldValue: unknown) => void;
+    readonly onRowGrouping?: (columnIds: string[]) => void;
     readonly onRowReorder?: (fromRows: ReadonlyArray<number>, toRow: number) => void;
     // (undocumented)
     readonly onRowResize?: (rowIndex: number, newHeight: number, finalCommit: boolean) => void;

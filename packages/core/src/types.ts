@@ -619,6 +619,31 @@ export interface GridOptions {
    *  RowGroupMeta.path so the caller can flip its expansion state and
    *  rebuild the wrapped RowSource. */
   readonly onToggleGroup?: (path: string) => void;
+
+  // ---- Tool panels (v1.3) ----
+  //
+  // These mount as DOM chrome inside `host` and emit model-shaped
+  // callbacks. The grid computes NOTHING — the consumer wires each
+  // callback to @onegrid/data (groupRows / pivot / filterIndex) and
+  // feeds results back via setRowSource() / setColumns(). All additive.
+
+  /** v1.3. Show the drag-to-group pill bar — a strip at the top of the
+   *  header chrome holding one removable, reorderable pill per active
+   *  group-by column, plus a drop target. Default false. Seed the
+   *  initial pills with `groupColumns`. The grid owns the pill list as
+   *  UI state and emits `onRowGrouping` whenever it changes; the
+   *  consumer rebuilds its grouped RowSource. */
+  readonly enableGroupBar?: boolean;
+
+  /** v1.3. Initial group-by column ids shown as pills in the group bar.
+   *  Order is the nesting order (outer → inner), matching
+   *  `GroupingModel.columns`. Only meaningful with `enableGroupBar`. */
+  readonly groupColumns?: ReadonlyArray<string>;
+
+  /** v1.3. Fires when the group-bar pill set changes (add / remove /
+   *  reorder). Receives the new ordered column-id list — drop it
+   *  straight into `GroupingModel.columns`. Empty array = ungrouped. */
+  readonly onRowGrouping?: (columnIds: string[]) => void;
 }
 
 export interface ColumnGroupDef {

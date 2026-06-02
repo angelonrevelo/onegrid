@@ -733,6 +733,19 @@ split (one file per Excel category + `_shared` for helpers +
   coverage: `column-resize.test.ts` (5 tests) drives the resize FSM over
   frozen + scrolling boundaries with min/max clamp; `row-reorder.test.ts`
   grew to 11 tests driving the full drag. 123/123 core tests pass.
+- Wave 28 (2026-06-02) — **v1.3 tool panels, part 1** — drag-to-group
+  pill bar. `enableGroupBar: true` mounts a host DOM strip at the top of
+  the header chrome (folded into `fullHeaderHeight()`; the column-group
+  band is shifted down by a single `ctx.translate` so no header-draw
+  coordinates were rewritten). Pills are removable + native-HTML5-drag
+  reorderable; an "add column" `<select>` lists ungrouped columns. The
+  grid emits `onRowGrouping(columnIds: string[])` on every change and
+  exposes `setGroupColumns()` / `getGroupColumns()`; seed via
+  `groupColumns`. Pure UI — computes no grouping (consumer wires to
+  `@onegrid/data` `groupRows()`). `group-bar.test.ts` (12 tests, DOM +
+  callback-payload driven). 135/135 core tests. Open item: the bar does
+  not auto-refresh pill labels on `setColumns()` (avoids rebuilding 60×/s
+  during a column-resize drag); fine for static column sets.
 
 **Chunk A (OOXML interop) status as of 2026-06-02.** `@onegrid/xlsx`
 scaffold shipped: package manifest + tsup/tsconfig + worksheet
@@ -1042,14 +1055,26 @@ MCP. 96/96 core tests pass.
   (which covers compute-time customization; slots cover render-time
   component substitution).
 
-### v1.3.0 — "tool panels + UI surfaces"
+### v1.3.0 — "tool panels + UI surfaces"  🟡 **In progress — group bar shipped (wave 28, 2026-06-02); aggregation / filter / pivot panels next.**
 
 Surfaces every grid library is expected to ship as out-of-the-box UI.
-Today only the column tool panel exists.
+Today the column tool panel + the group bar exist.
 
-- **Drag-to-group toolbar bar** — pill UI above the grid; drop a
-  column-header pill in to group by that column. The current group-by
-  is a `<select>` dropdown.
+**Architecture (all tool panels).** Panels mount as DOM chrome inside
+`host` — same pattern as the wave-25 find toolbar — and emit
+model-shaped callbacks. `@onegrid/core` computes NOTHING: the consumer
+wires each callback to `@onegrid/data` (`groupRows` / `pivot` /
+`filterIndex`) and feeds results back via `setRowSource()` /
+`setColumns()`. Every new GridOption is additive (optional). Panels
+reuse only TYPE-ONLY imports of the `@onegrid/protocol` model shapes.
+
+- ✅ **Drag-to-group pill bar** (wave 28) — `enableGroupBar: true`
+  mounts a strip at the top of the header chrome (folded into
+  `fullHeaderHeight()`, so the data band sits below it) holding one
+  removable, drag-reorderable pill per active group-by column plus an
+  "add column" picker. The grid owns the ordered list as UI state and
+  emits `onRowGrouping(columnIds: string[])` on every change; seed it
+  with `groupColumns`. Imperative `setGroupColumns()` / `getGroupColumns()`.
 - **Pivot side panel UI** — drag rows / columns / values bins; updates
   the PivotModel; the existing pivot compute path consumes it.
 - **Filter side panel** — every column's filter accessible from one

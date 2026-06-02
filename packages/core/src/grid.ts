@@ -50,6 +50,7 @@ interface FrameSample {
 const STATUS_BAR_HEIGHT = 24;
 const COLUMN_GROUP_BAND_HEIGHT = 24;
 const FLOATING_FILTER_ROW_HEIGHT = 28;
+const GROUP_BAR_HEIGHT = 36;
 
 interface PerformanceWithMemory extends Performance {
   readonly memory?: {
@@ -209,6 +210,22 @@ export class Grid {
     | undefined;
   private floatingFilterBandEl: HTMLDivElement | null = null;
   private readonly floatingFilterInputs = new Map<string, HTMLInputElement>();
+
+  // Drag-to-group pill bar (v1.3). A strip at the top of the header
+  // chrome holding one pill per active group-by column + a drop target.
+  // The grid owns the ordered column-id list as UI state; mutations fire
+  // onRowGrouping. The bar consumes vertical space folded into
+  // fullHeaderHeight() (same mechanism as the column-group band).
+  private readonly groupBarEnabled: boolean;
+  private readonly onRowGrouping:
+    | ((columnIds: string[]) => void)
+    | undefined;
+  private groupColumns: string[] = [];
+  private groupBarEl: HTMLDivElement | null = null;
+  /** Index in groupColumns where a dragged pill would drop, or -1 when
+   *  no pill drag is active. Drives the live insertion caret. */
+  private groupPillDragFrom = -1;
+  private groupPillDragTo = -1;
 
   // Pinned rows + column groups + status bar.
   private pinnedTopRowSource: RowSource | undefined;
@@ -398,6 +415,11 @@ export class Grid {
     // Floating filter row.
     this.floatingFiltersEnabled = options.floatingFilters === true;
     this.onFloatingFilterChange = options.onFloatingFilterChange;
+
+    // Drag-to-group pill bar (v1.3).
+    this.groupBarEnabled = options.enableGroupBar ?? false;
+    this.onRowGrouping = options.onRowGrouping;
+    this.groupColumns = options.groupColumns ? [...options.groupColumns] : [];
     if (options.expanded) {
       this.expanded = new Set(options.expanded);
     }
@@ -602,6 +624,25 @@ export class Grid {
       this.host.appendChild(band);
       this.floatingFilterBandEl = band;
       this.buildFloatingFilterInputs();
+    }
+
+    // Drag-to-group pill bar (v1.3): a strip at the very top of the host
+    // holding one pill per active group-by column. Folded into
+    // fullHeaderHeight() so the data band sits below it.
+    if (this.groupBarEnabled) {
+      const bar = document.createElement('div');
+      bar.setAttribute('role', 'toolbar');
+      bar.setAttribute('aria-label', 'Group by columns');
+      bar.setAttribute('aria-controls', this.gridId);
+      bar.style.cssText =
+        `position:absolute;left:0;right:0;top:0;height:${String(GROUP_BAR_HEIGHT)}px;` +
+        `background:${this.theme.headerBackground};color:${this.theme.text};` +
+        'border-bottom:1px solid #2a2f37;z-index:4;display:flex;align-items:center;' +
+        `gap:6px;padding:0 10px;overflow:hidden;font-family:${this.theme.fontFamily};` +
+        'font-size:12px;box-sizing:border-box;';
+      this.host.appendChild(bar);
+      this.groupBarEl = bar;
+      this.renderGroupBar();
     }
 
     // Tooltip: a shared element re-targeted per hovered cell. Mounted
@@ -946,6 +987,8 @@ export class Grid {
     this.floatingFilterBandEl?.remove();
     this.floatingFilterBandEl = null;
     this.floatingFilterInputs.clear();
+    this.groupBarEl?.remove();
+    this.groupBarEl = null;
     this.statusBarEl?.remove();
     this.statusBarEl = null;
     // Tear down any still-mounted detail panels so nested Grids /
@@ -2324,12 +2367,21 @@ export class Grid {
     return this.columnGroups && this.columnGroups.length > 0 ? COLUMN_GROUP_BAND_HEIGHT : 0;
   }
 
-  /** Total header band height — base header plus column-group band when
-   *  groups are present, plus the floating filter row when enabled.
-   *  Cell-positioning math below uses this instead of the raw
-   *  `headerHeight`. */
+  /** Strip reserved at the very top of the header chrome for the
+   *  drag-to-group pill bar (v1.3). Zero unless `enableGroupBar`. The
+   *  bar itself is a DOM overlay; the canvas only reserves the space and
+   *  paints nothing in it. Sits ABOVE the column-group band. */
+  private groupBarHeight(): number {
+    return this.groupBarEnabled ? GROUP_BAR_HEIGHT : 0;
+  }
+
+  /** Total header band height — group bar (v1.3) + base header +
+   *  column-group band when groups are present + floating filter row
+   *  when enabled. Cell-positioning math below uses this instead of the
+   *  raw `headerHeight`. */
   private fullHeaderHeight(): number {
     return (
+      this.groupBarHeight() +
       this.headerHeight +
       this.columnGroupBandHeight() +
       this.floatingFilterRowHeight()
@@ -2370,6 +2422,151 @@ export class Grid {
       this.floatingFilterBandEl.appendChild(input);
       this.floatingFilterInputs.set(column.id, input);
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Group bar (v1.3)
+  // ---------------------------------------------------------------------------
+
+  /** Rebuild the pill bar from `groupColumns`. One pill per grouped
+   *  column (draggable for reorder, with an ✕ remove button) plus an
+   *  "add column" <select> listing the columns not yet grouped. Cheap to
+   *  rebuild wholesale — the list is tiny. */
+  private renderGroupBar(): void {
+    const bar = this.groupBarEl;
+    if (!bar) return;
+    bar.replaceChildren();
+
+    const label = document.createElement('span');
+    label.textContent = 'Group by:';
+    label.style.cssText = `color:${this.theme.mutedText};font-size:11px;margin-right:2px;`;
+    bar.appendChild(label);
+
+    if (this.groupColumns.length === 0) {
+      const hint = document.createElement('span');
+      hint.textContent = 'none — add a column →';
+      hint.style.cssText = `color:${this.theme.mutedText};font-size:11px;font-style:italic;`;
+      bar.appendChild(hint);
+    }
+
+    this.groupColumns.forEach((colId, index) => {
+      const pill = document.createElement('span');
+      pill.setAttribute('role', 'listitem');
+      pill.draggable = true;
+      pill.dataset.groupIndex = String(index);
+      const display = this.columns.find((c) => c.id === colId)?.displayName ?? colId;
+      pill.style.cssText =
+        `display:inline-flex;align-items:center;gap:4px;background:${this.theme.background};` +
+        `color:${this.theme.text};border:1px solid #2a2f37;border-radius:12px;` +
+        'padding:2px 6px 2px 10px;font-size:11px;cursor:grab;user-select:none;' +
+        'white-space:nowrap;';
+      const text = document.createElement('span');
+      text.textContent = display;
+      pill.appendChild(text);
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.textContent = '✕';
+      x.setAttribute('aria-label', `Remove ${display} from grouping`);
+      x.style.cssText =
+        `background:none;border:none;color:${this.theme.mutedText};cursor:pointer;` +
+        'font-size:10px;padding:0 2px;line-height:1;';
+      x.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.removeGroupColumn(colId);
+      });
+      pill.appendChild(x);
+
+      // Native HTML5 drag for reorder.
+      pill.addEventListener('dragstart', (e) => {
+        this.groupPillDragFrom = index;
+        this.groupPillDragTo = index;
+        e.dataTransfer?.setData('text/plain', colId);
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      });
+      pill.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        this.groupPillDragTo = index;
+      });
+      pill.addEventListener('drop', (e) => {
+        e.preventDefault();
+        this.commitGroupPillReorder(index);
+      });
+      pill.addEventListener('dragend', () => {
+        this.groupPillDragFrom = -1;
+        this.groupPillDragTo = -1;
+      });
+      bar.appendChild(pill);
+    });
+
+    const ungrouped = this.columns.filter((c) => !this.groupColumns.includes(c.id));
+    if (ungrouped.length > 0) {
+      const add = document.createElement('select');
+      add.setAttribute('aria-label', 'Add column to grouping');
+      add.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 4px;' +
+        'margin-left:auto;cursor:pointer;';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '+ add';
+      add.appendChild(placeholder);
+      for (const c of ungrouped) {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.displayName ?? c.id;
+        add.appendChild(opt);
+      }
+      add.addEventListener('change', () => {
+        if (add.value) this.addGroupColumn(add.value);
+      });
+      bar.appendChild(add);
+    }
+  }
+
+  /** Move the dragged pill (groupPillDragFrom) to land before `target`. */
+  private commitGroupPillReorder(target: number): void {
+    const from = this.groupPillDragFrom;
+    this.groupPillDragFrom = -1;
+    this.groupPillDragTo = -1;
+    if (from < 0 || from === target) return;
+    const next = [...this.groupColumns];
+    const [moved] = next.splice(from, 1);
+    if (moved === undefined) return;
+    // After removal, indices ≥ from shift left by one — the same
+    // insertion-index convention as column / row reorder.
+    const insertAt = target > from ? target - 1 : target;
+    next.splice(insertAt, 0, moved);
+    this.setGroupColumns(next);
+  }
+
+  private addGroupColumn(colId: string): void {
+    if (this.groupColumns.includes(colId)) return;
+    this.setGroupColumns([...this.groupColumns, colId]);
+  }
+
+  private removeGroupColumn(colId: string): void {
+    this.setGroupColumns(this.groupColumns.filter((id) => id !== colId));
+  }
+
+  /** Replace the group-by column list. Rebuilds the pill bar and fires
+   *  `onRowGrouping`. The public imperative entry point — also used by
+   *  the bar's own add / remove / reorder handlers. No-ops (and stays
+   *  silent) when the list is unchanged. */
+  setGroupColumns(columnIds: ReadonlyArray<string>): void {
+    const next = [...columnIds];
+    const same =
+      next.length === this.groupColumns.length &&
+      next.every((id, i) => id === this.groupColumns[i]);
+    if (same) return;
+    this.groupColumns = next;
+    this.renderGroupBar();
+    this.onRowGrouping?.([...this.groupColumns]);
+  }
+
+  /** Current group-by column ids, in nesting order. */
+  getGroupColumns(): string[] {
+    return [...this.groupColumns];
   }
 
   /** Position the band + each input over its column. Called from
@@ -3961,13 +4158,19 @@ export class Grid {
   private drawHeader(): void {
     const ctx = this.ctx;
     const theme = this.theme;
+    const groupBarH = this.groupBarHeight();
     const groupH = this.columnGroupBandHeight();
-    const headerTop = groupH;
+    // Column-header labels sit below the group bar (v1.3) AND the
+    // column-group band. The group bar is a DOM overlay, so the canvas
+    // only reserves its strip and paints nothing in it.
+    const headerTop = groupBarH + groupH;
     const fullHeader = this.fullHeaderHeight();
 
-    // Background spans the whole header chrome (group band + column headers).
+    // Background spans the header chrome BELOW the group bar (the DOM bar
+    // covers its own strip). Starting at groupBarH keeps the canvas from
+    // double-painting under the bar.
     ctx.fillStyle = theme.headerBackground;
-    ctx.fillRect(0, 0, this.viewportWidth, fullHeader);
+    ctx.fillRect(0, groupBarH, this.viewportWidth, fullHeader - groupBarH);
 
     ctx.font = `600 ${String(theme.fontSize - 1)}px ${theme.fontFamily}`;
     ctx.textBaseline = 'middle';
@@ -4025,7 +4228,7 @@ export class Grid {
         const column = this.columns[col];
         if (!column) continue;
         ctx.fillStyle = theme.headerBackground;
-        ctx.fillRect(fx, 0, column.width, fullHeader);
+        ctx.fillRect(fx, groupBarH, column.width, fullHeader - groupBarH);
         ctx.fillStyle = theme.text;
         drawCell(column, fx);
         fx += column.width;
@@ -4054,6 +4257,13 @@ export class Grid {
     const theme = this.theme;
     const groupH = this.columnGroupBandHeight();
     if (groupH === 0) return;
+
+    // The band's local coordinate space starts at y=0; shift it down by
+    // the group bar (v1.3) so the whole band sits below the pill bar
+    // without rewriting every y-coordinate below.
+    const groupBarH = this.groupBarHeight();
+    ctx.save();
+    if (groupBarH !== 0) ctx.translate(0, groupBarH);
 
     const colIndex = new Map<string, number>();
     for (let i = 0; i < this.columns.length; i++) {
@@ -4142,6 +4352,8 @@ export class Grid {
     ctx.moveTo(0, groupH - 0.5);
     ctx.lineTo(this.viewportWidth, groupH - 0.5);
     ctx.stroke();
+
+    ctx.restore(); // undo the group-bar translate
   }
 
   /** Draw a fixed-height band of pinned rows starting at `bandTop`. Cells
