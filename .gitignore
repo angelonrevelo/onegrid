@@ -7,7 +7,13 @@ coverage
 .nuxt
 .svelte-kit
 .solid
+.astro
 out
+
+# Docs site: generated from docs/*.md by apps/docs/sync-content.mjs at
+# build time. Single source of truth is docs/ — never commit the copies.
+apps/docs/src/content/docs/guides/
+apps/docs/src/content/docs/reference/
 
 *.log
 .DS_Store

@@ -1235,8 +1235,17 @@ or external services. Each is a fix-it batch, not a feature milestone.
   `workspace:*` deps are rewritten to real versions automatically by
   `pnpm publish` (the `save-workspace-protocol: rolling` `.npmrc` setting).
 - 🔴 **Live demo URL** — `apps/playground` and the broader [`apps/showcase`](./apps/showcase) (every-package-wired-together demo, `0244521`) are local-only; no hosted preview yet. Vercel / Netlify / Cloudflare Pages configs ship with the showcase as of 2026-06-02 (`61af59e`'s follow-up); flips to 🟢 once a hosted URL exists.
-- 🔴 **Docs site** — `docs/*.md` are markdown only; no rendered site
-  (`docs.onegrid.dev` or similar via Astro / Nextra / VitePress).
+- 🟡 **Docs site** — built (2026-06-02): [`apps/docs`](./apps/docs) is an
+  Astro Starlight site (search via Pagefind, light/dark, syntax
+  highlighting, sitemap). Hand-authored landing + getting-started +
+  package-map pages; the curated guides (SURFACE / SEMVER / SECURITY /
+  bundle-budgets / dbsp-spec) + the changelog are mirrored from
+  `docs/*.md` + root `CHANGELOG.md` by `sync-content.mjs` at build time
+  (single source of truth — generated copies are gitignored). Builds
+  clean locally (`pnpm --filter @onegrid/docs build` → 10 pages);
+  `vercel.json` ships. Flips to 🟢 once hosted (needs the Vercel login —
+  same gate as the live demo URL). Internal `docs/v*.md` wave logs are
+  intentionally not published.
 - **CDN / unpkg bundle** — standalone `<script>`-tag distribution.
 - **Storybook for component packages** — `@onegrid/react`'s
   `<ColumnToolPanel>`, `<SelectAllCheckbox>`, etc.
