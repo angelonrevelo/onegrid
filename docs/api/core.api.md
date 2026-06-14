@@ -364,6 +364,7 @@ export interface GridTheme {
     readonly fontFamily: string;
     // (undocumented)
     readonly fontSize: number;
+    readonly groupBackground?: string;
     // (undocumented)
     readonly headerBackground: string;
     // (undocumented)

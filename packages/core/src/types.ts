@@ -277,6 +277,10 @@ export interface GridTheme {
   readonly border: string;
   readonly fontFamily: string;
   readonly fontSize: number;
+  /** Background for group-header rows (row grouping / tree). Optional;
+   *  falls back to `headerBackground` when unset, so existing themes are
+   *  unchanged. Lets light themes avoid a hardcoded dark group band. */
+  readonly groupBackground?: string;
 }
 
 /** Discriminated union describing what the user right-clicked. The

@@ -4532,7 +4532,10 @@ export class Grid {
     const indent = meta.depth * 16 + 8;
     const chevronX = indent;
 
-    ctx.fillStyle = '#1b1f26';
+    // Group-header band tracks the theme (falls back to headerBackground, which
+    // equals the prior hardcoded #1b1f26 in the default dark theme) so light themes
+    // don't get a hardcoded dark band.
+    ctx.fillStyle = theme.groupBackground ?? theme.headerBackground;
     ctx.fillRect(0, y, this.viewportWidth, h);
     ctx.strokeStyle = theme.border;
     ctx.lineWidth = 1;
