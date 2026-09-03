@@ -107,6 +107,12 @@ importers:
       '@onegrid/plugin-kit':
         specifier: workspace:*
         version: link:../../packages/plugin-kit
+      '@onegrid/postgres':
+        specifier: workspace:*
+        version: link:../../packages/adapters/postgres
+      '@onegrid/preset':
+        specifier: workspace:*
+        version: link:../../packages/preset
       '@onegrid/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -122,6 +128,9 @@ importers:
       '@onegrid/ssrm':
         specifier: workspace:*
         version: link:../../packages/ssrm
+      '@onegrid/studio':
+        specifier: workspace:*
+        version: link:../../packages/studio
       '@onegrid/temporal':
         specifier: workspace:*
         version: link:../../packages/temporal
@@ -364,6 +373,12 @@ importers:
         specifier: ^0.14
         version: 0.14.10
 
+  packages/adapters/bigquery:
+    dependencies:
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../../protocol
+
   packages/adapters/clickhouse:
     dependencies:
       '@onegrid/protocol':
@@ -398,6 +413,12 @@ importers:
       testcontainers:
         specifier: ^12.0.1
         version: 12.0.1
+
+  packages/adapters/elasticsearch:
+    dependencies:
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../../protocol
 
   packages/adapters/kysely:
     dependencies:
@@ -475,6 +496,15 @@ importers:
         specifier: ^12.0.1
         version: 12.0.1
 
+  packages/adapters/prisma:
+    dependencies:
+      '@onegrid/orm-sync':
+        specifier: workspace:*
+        version: link:../../orm-sync
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../../protocol
+
   packages/adapters/react:
     dependencies:
       '@onegrid/core':
@@ -496,6 +526,12 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.5(react@19.2.5)
+
+  packages/adapters/snowflake:
+    dependencies:
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../../protocol
 
   packages/adapters/solid:
     dependencies:
@@ -580,6 +616,19 @@ importers:
         specifier: workspace:*
         version: link:../protocol
 
+  packages/chart:
+    dependencies:
+      '@onegrid/core':
+        specifier: workspace:*
+        version: link:../core
+      '@onegrid/data':
+        specifier: workspace:*
+        version: link:../data
+    devDependencies:
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
+
   packages/core:
     dependencies:
       '@onegrid/a11y':
@@ -661,6 +710,16 @@ importers:
         specifier: ^4.8.0
         version: 4.8.0
 
+  packages/embed:
+    dependencies:
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
+
   packages/export:
     dependencies:
       '@onegrid/protocol':
@@ -670,6 +729,16 @@ importers:
       xlsx:
         specifier: ^0.18.5
         version: 0.18.5
+
+  packages/fdc3:
+    dependencies:
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
 
   packages/formula:
     dependencies:
@@ -728,6 +797,22 @@ importers:
         specifier: ^0.12.0
         version: 0.12.0
 
+  packages/native: {}
+
+  packages/notebook:
+    dependencies:
+      '@onegrid/data':
+        specifier: workspace:*
+        version: link:../data
+      '@onegrid/formula':
+        specifier: workspace:*
+        version: link:../formula
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+
+  packages/observability: {}
+
   packages/onegrid:
     dependencies:
       '@onegrid/core':
@@ -749,13 +834,43 @@ importers:
         specifier: workspace:*
         version: link:../ssrm
 
+  packages/permission:
+    dependencies:
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+
+  packages/pgrx: {}
+
   packages/plugin-kit:
     dependencies:
       '@onegrid/protocol':
         specifier: workspace:*
         version: link:../protocol
 
+  packages/preset:
+    dependencies:
+      '@onegrid/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/print:
+    dependencies:
+      '@onegrid/export':
+        specifier: workspace:*
+        version: link:../export
+    devDependencies:
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
+
   packages/protocol: {}
+
+  packages/query-builder:
+    dependencies:
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
   packages/reactive: {}
 
@@ -774,11 +889,40 @@ importers:
         specifier: ^4.8.0
         version: 4.8.0
 
+  packages/studio:
+    dependencies:
+      '@onegrid/introspect':
+        specifier: workspace:*
+        version: link:../introspect
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      '@onegrid/postgres':
+        specifier: workspace:*
+        version: link:../adapters/postgres
+
   packages/temporal:
     dependencies:
       '@onegrid/protocol':
         specifier: workspace:*
         version: link:../protocol
+
+  packages/test:
+    dependencies:
+      '@onegrid/a11y':
+        specifier: workspace:*
+        version: link:../a11y
+      '@onegrid/core':
+        specifier: workspace:*
+        version: link:../core
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
 
   packages/tokens:
     dependencies:
@@ -801,6 +945,29 @@ importers:
       jsdom:
         specifier: ^25.0.0
         version: 25.0.1
+
+  packages/validate:
+    dependencies:
+      '@onegrid/formula':
+        specifier: workspace:*
+        version: link:../formula
+    devDependencies:
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
+
+  packages/wasm:
+    dependencies:
+      '@onegrid/data':
+        specifier: workspace:*
+        version: link:../data
+      '@onegrid/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      fast-check:
+        specifier: ^4.8.0
+        version: 4.8.0
 
   packages/webgpu:
     dependencies:

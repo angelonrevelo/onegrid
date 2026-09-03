@@ -1,9 +1,11 @@
 // =============================================================================
-// Cross-category aliases. Must load AFTER every primary registration so
+// Base cross-category aliases. Must load AFTER the base category modules so
 // `getFunction(<name>)` resolves the canonical implementation.
 //
-// The barrel `functions.ts` imports each category in dependency order, then
-// this file last.
+// Only aliases whose TARGET is in the always-bundled base set live here.
+// Aliases that point at a v1.1 function (UNICHAR→CHAR, MODE→MODE.SNGL, …)
+// live next to the sub-path entry that registers their target — otherwise
+// the alias would resolve `undefined` for an adopter who never opted in.
 // =============================================================================
 
 import { getFunction, register } from './_shared';
@@ -13,16 +15,3 @@ register('AVG', getFunction('AVERAGE')!);
 
 // Text
 register('CONCATENATE', getFunction('CONCAT')!);
-register('UNICHAR', getFunction('CHAR')!);
-
-// Stats
-register('MODE', getFunction('MODE.SNGL')!);
-register('STDEV', getFunction('STDEV.S')!);
-register('STDEVP', getFunction('STDEV.P')!);
-register('VAR', getFunction('VAR.S')!);
-register('VARP', getFunction('VAR.P')!);
-register('RANK', getFunction('RANK.EQ')!);
-register('PERCENTILE', getFunction('PERCENTILE.INC')!);
-register('QUARTILE', getFunction('QUARTILE.INC')!);
-register('PEARSON', getFunction('CORREL')!);
-register('COVAR', getFunction('COVARIANCE.P')!);

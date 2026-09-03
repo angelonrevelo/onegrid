@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/print",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 11300,
+      "note": "Pagination engine + hand-written PDF writer (incl. the Helvetica width table) + @media print CSS emitter + HTML emitter + screenshot tiler. ~30% headroom over the measured 8.7 KB gzip. Refusing jsPDF/pdf-lib is what keeps this number three digits shorter than the alternative."
+    }
+  ]
+}

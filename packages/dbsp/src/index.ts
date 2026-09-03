@@ -483,3 +483,21 @@ export class Pipeline {
     for (const op of this.ops) op.dispose();
   }
 }
+
+// -----------------------------------------------------------------------------
+// Public view API — `defineView` and the base table that feeds it. Defined in
+// `view.ts` so this file stays the operator algebra; the two form a cycle at
+// module level only (view.ts imports operators, index.ts re-exports the view
+// API), and nothing is read at module-init time on either side.
+// -----------------------------------------------------------------------------
+
+export { createTable, defineView } from './view';
+export type {
+  Table,
+  TableChange,
+  TableOption,
+  View,
+  ViewDefinition,
+  ViewSource,
+  ViewStat,
+} from './view';

@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/query-builder",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 9060,
+      "note": "AST + operator catalogue + validation + four SQL dialects + Mongo + the edit algebra. Measured 6,971 B gzipped; budget is ~30% headroom. A new dialect or operator family is the only thing that should move this."
+    }
+  ]
+}

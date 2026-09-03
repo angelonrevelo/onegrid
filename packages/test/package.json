@@ -1,0 +1,41 @@
+{
+  "name": "@onegrid/test",
+  "version": "1.0.0",
+  "description": "Adopter test harness for oneGrid — a recording Canvas-2D stub that lifts jsdom's hardest limit, query helpers over the grid's accessibility shadow, timeout-bounded async waits with diagnostic failures, deterministic row/data-source fakes with a controllable pending queue, user-event helpers that replay the exact sequences @onegrid/core listens for, and vitest matchers. Mount a real Grid in jsdom and assert what a user would see.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/a11y": "workspace:*",
+    "@onegrid/core": "workspace:*",
+    "@onegrid/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

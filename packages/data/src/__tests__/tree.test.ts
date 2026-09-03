@@ -49,7 +49,7 @@ describe('flattenTree', () => {
       {
         id: 'lazy',
         data: {},
-        loadChildren: async () => [],
+        loadChildren: () => Promise.resolve([]),
       },
     ];
     const out = flattenTree(lazy, new Set());
@@ -62,7 +62,7 @@ describe('flattenTree', () => {
       {
         id: 'lazy',
         data: {},
-        loadChildren: async () => [],
+        loadChildren: () => Promise.resolve([]),
       },
     ];
     const out = flattenTree(lazy, new Set(['lazy']));

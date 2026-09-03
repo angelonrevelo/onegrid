@@ -1,7 +1,7 @@
 {
   "name": "@onegrid/touch",
   "version": "1.0.0",
-  "description": "oneGrid touch / mobile surface — Pointer Events bridge with gesture recognizer (tap, double-tap, long-press, swipe, drag-from-edge), touch-action / overscroll-behavior emitter, VirtualKeyboard + visualViewport adapter, inputmode mapping.",
+  "description": "oneGrid touch / mobile surface \u2014 Pointer Events bridge with gesture recognizer (tap, double-tap, long-press, swipe, drag-from-edge), swipe-to-reveal row actions with rubber-banding, velocity commit, full-swipe destructive, axis locking and RTL mirroring, touch-action / overscroll-behavior emitter, VirtualKeyboard + visualViewport adapter, inputmode mapping.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -43,6 +43,17 @@ export type {
 export { pivot } from './pivot';
 export type { PivotedTable } from './pivot';
 
+export { groupPivot, flattenGroupPivot } from './group-pivot';
+export type {
+  GroupPivotInput,
+  GroupPivotOption,
+  GroupPivotResult,
+  GroupPivotRow,
+  NonDecomposableRollup,
+  PivotColumnLeaf,
+  PivotColumnNode,
+} from './group-pivot';
+
 export { enumerateDistinct, enumerateDistinctChunked } from './distinct';
 export type { DistinctValue, EnumerateDistinctOptions } from './distinct';
 

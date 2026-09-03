@@ -1,0 +1,86 @@
+{
+  "name": "@onegrid/preset",
+  "version": "1.0.0",
+  "description": "Compile-time feature opt-in for oneGrid. A typed registry of every toggleable grid feature with its inter-feature dependency, seven complete application presets (spreadsheet, database editor, dashboard, report, mobile, minimal, analytics) that each carry a feature set plus density, theme and interaction profile, a deep-merge extension helper with documented array semantics, a responsive profile resolver that honours pointer type, viewport, prefers-reduced-motion and forced-colors, and a bundle estimator sourced from the repo's real per-package gzip budgets. Optional presets ship behind sub-path exports so an adopter pays only for what they import.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./feature": {
+      "types": "./dist/feature.d.ts",
+      "import": "./dist/feature.js",
+      "require": "./dist/feature.cjs"
+    },
+    "./profile": {
+      "types": "./dist/profile.d.ts",
+      "import": "./dist/profile.js",
+      "require": "./dist/profile.cjs"
+    },
+    "./cost": {
+      "types": "./dist/cost.d.ts",
+      "import": "./dist/cost.js",
+      "require": "./dist/cost.cjs"
+    },
+    "./spreadsheet": {
+      "types": "./dist/preset/spreadsheet.d.ts",
+      "import": "./dist/preset/spreadsheet.js",
+      "require": "./dist/preset/spreadsheet.cjs"
+    },
+    "./database-editor": {
+      "types": "./dist/preset/database-editor.d.ts",
+      "import": "./dist/preset/database-editor.js",
+      "require": "./dist/preset/database-editor.cjs"
+    },
+    "./dashboard": {
+      "types": "./dist/preset/dashboard.d.ts",
+      "import": "./dist/preset/dashboard.js",
+      "require": "./dist/preset/dashboard.cjs"
+    },
+    "./report": {
+      "types": "./dist/preset/report.d.ts",
+      "import": "./dist/preset/report.js",
+      "require": "./dist/preset/report.cjs"
+    },
+    "./mobile": {
+      "types": "./dist/preset/mobile.d.ts",
+      "import": "./dist/preset/mobile.js",
+      "require": "./dist/preset/mobile.cjs"
+    },
+    "./minimal": {
+      "types": "./dist/preset/minimal.d.ts",
+      "import": "./dist/preset/minimal.js",
+      "require": "./dist/preset/minimal.cjs"
+    },
+    "./analytics": {
+      "types": "./dist/preset/analytics.d.ts",
+      "import": "./dist/preset/analytics.js",
+      "require": "./dist/preset/analytics.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/core": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

@@ -88,7 +88,7 @@ export function pivot(table: ColumnTable, model: PivotModel): PivotedTable {
     }
     let buckets = perPivot.get(pivotKey);
     if (!buckets) {
-      buckets = measures.map(() => ({ nums: [], nonNums: [] }) as Bucket);
+      buckets = measures.map((): Bucket => ({ nums: [], nonNums: [] }));
       perPivot.set(pivotKey, buckets);
     }
 

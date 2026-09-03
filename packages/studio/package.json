@@ -1,0 +1,40 @@
+{
+  "name": "@onegrid/studio",
+  "version": "1.0.0",
+  "description": "Headless Postgres table-editor engine — the logic behind a Supabase-style database studio with no rendering attached. Rich schema introspection over pg_catalog, a DdlOperation union that compiles to correctly-quoted DDL, primary-key-aware row DML, foreign-key relationship intelligence, a migration planner with risk assessment and reversal, and a dollar-quote-aware SQL statement splitter. Runs over an injectable queryable, so it carries no database driver.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/introspect": "workspace:*",
+    "@onegrid/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@onegrid/postgres": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

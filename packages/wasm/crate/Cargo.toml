@@ -1,0 +1,26 @@
+[package]
+name = "onegrid-accel"
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+description = "oneGrid hot-path kernels: stable sort permutation, filter mask, group factorisation, aggregation, bitmap algebra and top-k over raw pointers. No wasm-bindgen, no allocator."
+publish = false
+
+[lib]
+# cdylib is what produces a standalone .wasm with only our exports. rlib is
+# kept so `cargo test` on the host can link the crate for unit tests.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Deliberately empty. Every dependency is a dependency the adopter's build has
+# to resolve, and this crate needs none: no allocator, no std, no bindgen.
+
+[profile.release]
+# The kernel is a hot loop, so inlining across module boundaries is worth more
+# than compile time; and the artefact is fetched over the network, so size is
+# a user-visible cost.
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -19,8 +19,13 @@ import { readFile, writeFile, mkdir, readdir, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-const REPO_ROOT = resolve(new URL('.', import.meta.url).pathname, '..');
+// NOTE: `new URL(...).pathname` yields a leading-slash path on Windows
+// (`/C:/Users/...`), which every fs call then rejects — the walk found no
+// package and the script exited 0 having checked NOTHING. Use fileURLToPath,
+// which is the platform-correct conversion.
+const REPO_ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const REPORT_DIR = join(REPO_ROOT, 'docs', 'api');
 const CHECK_MODE = process.argv.includes('--check');
 

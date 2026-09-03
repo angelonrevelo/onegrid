@@ -19,6 +19,7 @@ import { FenwickHeights } from '@onegrid/data';
 import { ariaCellId, LiveAnnouncer } from '@onegrid/a11y';
 import { RendererPool } from './render/renderer-pool';
 import {
+  DEFAULT_ROW_HEIGHT,
   DEFAULT_THEME,
   type ColumnDef,
   type FrameStats,
@@ -396,10 +397,11 @@ export class Grid {
     if (options.expanded) {
       this.expanded = new Set(options.expanded);
     }
+    const rowHeight = options.rowHeight ?? DEFAULT_ROW_HEIGHT;
     this.baseHeights =
-      typeof options.rowHeight === 'number'
-        ? new Float32Array(options.rowSource.numRows).fill(options.rowHeight)
-        : new Float32Array(options.rowHeight); // copy so the user's array isn't mutated
+      typeof rowHeight === 'number'
+        ? new Float32Array(options.rowSource.numRows).fill(rowHeight)
+        : new Float32Array(rowHeight); // copy so the user's array isn't mutated
     this.fenwick = new FenwickHeights(this.computeEffectiveHeights());
 
     // The host needs to be a positioning context for our absolute children.
@@ -720,7 +722,7 @@ export class Grid {
     };
   }
 
-  setRowSource(rowSource: RowSource, rowHeight: number | Float32Array): void {
+  setRowSource(rowSource: RowSource, rowHeight: number | Float32Array = DEFAULT_ROW_HEIGHT): void {
     this.rowSource = rowSource;
     // Update baseHeights too — not just fenwick. Without this, a later
     // setExpanded / toggleExpanded (which React fires when the

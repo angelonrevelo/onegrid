@@ -313,6 +313,14 @@ export const DEFAULT_THEME: GridTheme = {
   fontSize: 13,
 };
 
+/**
+ * Comfortable-density row height used when the adopter omits `rowHeight`.
+ * 32px matches `@onegrid/tokens` comfortable density and the value booted
+ * had to discover by reading types rather than docs.
+ * @public
+ */
+export const DEFAULT_ROW_HEIGHT = 32;
+
 export interface GridOptions {
   /** DOM element to mount into. */
   readonly host: HTMLElement;
@@ -320,8 +328,13 @@ export interface GridOptions {
   readonly columns: ReadonlyArray<ColumnDef>;
   /** Synchronous row reader. */
   readonly rowSource: RowSource;
-  /** Per-row heights. If a single number, applied uniformly. */
-  readonly rowHeight: number | Float32Array;
+  /**
+   * Per-row heights. A single number is applied uniformly. Omitted →
+   * {@link DEFAULT_ROW_HEIGHT} (32). A missing value used to be a type
+   * error with no runtime default, which is the first thing a new
+   * consumer (booted included) hit.
+   */
+  readonly rowHeight?: number | Float32Array;
   /** Adopter-augmented grid-instance context (declaration-merged via
    *  the `GridMeta` interface). Zero runtime cost. */
   readonly meta?: GridMeta;

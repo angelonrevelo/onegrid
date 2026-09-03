@@ -3,8 +3,8 @@
   "entries": [
     {
       "file": "dist/index.js",
-      "bytes": 4096,
-      "note": "Gesture recognizer + touch CSS emitter + VirtualKeyboard adapter + inputmode mapping."
+      "bytes": 7600,
+      "note": "Gesture recognizer + swipe-to-reveal row actions + touch CSS emitter + VirtualKeyboard adapter + inputmode mapping."
     }
   ]
 }

@@ -1,0 +1,36 @@
+{
+  "name": "@onegrid/bigquery",
+  "version": "1.0.0",
+  "description": "BigQuery adapter for oneGrid SSRM. Compiles BlockRequest into GoogleSQL with backtick-qualified project.dataset.table identifiers, typed @named query parameters, partition/cluster-aware predicate ordering and keyset pagination; ships a polling CDC adapter over an ingestion-time-partitioned outbox.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/protocol": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

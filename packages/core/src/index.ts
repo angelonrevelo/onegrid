@@ -15,6 +15,7 @@ export { Grid } from './grid';
 
 export {
   DEFAULT_THEME,
+  DEFAULT_ROW_HEIGHT,
 } from './types';
 export type {
   CellEditContext,

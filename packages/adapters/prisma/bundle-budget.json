@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/prisma",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 8000,
+      "note": "Gzipped. Query compiler (where/orderBy/cursor/select) + groupBy pushdown and un-nesting + DMMF introspection + BigInt/Decimal normalisation + polling CDC. Measured 6116 B; budget is ~30% headroom. Stays small because the Prisma Client is injected as a delegate rather than depended on."
+    }
+  ]
+}

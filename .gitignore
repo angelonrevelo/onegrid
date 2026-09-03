@@ -40,3 +40,7 @@ test-results/
 # api-extractor temp folders — generated per run, never committed.
 packages/*/temp/
 packages/adapters/*/temp/
+
+# Rust crate build output (packages/native/crate, packages/pgrx/crate).
+target/
+*.ppm

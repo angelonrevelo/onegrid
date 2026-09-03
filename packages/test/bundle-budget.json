@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/test",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 9216,
+      "note": "Canvas stub + a11y-shadow queries + waits + fakes + user events + matchers. Measured 6928 B gzipped; budget set ~30% above. This ships to devDependencies only, but it still must not grow unbounded — a harness that outweighs the grid is a harness nobody reads."
+    }
+  ]
+}

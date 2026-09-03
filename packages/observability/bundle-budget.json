@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/observability",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 9800,
+      "note": "Error taxonomy + boundary/circuit breaker + redacting logger + OTel-shaped tracer + frame quantiles. Measured 7508 B gzipped; budget is ~30% headroom. Zero runtime deps — a jump here means one crept in."
+    }
+  ]
+}

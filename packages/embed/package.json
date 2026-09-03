@@ -1,0 +1,39 @@
+{
+  "name": "@onegrid/embed",
+  "version": "1.0.0",
+  "description": "Embeddable-block layer for oneGrid — turns a grid into a self-contained block a third-party document host (Notion / Coda / Obsidian style) can carry: a versioned, migratable EmbedBlock descriptor, URL-safe base64url encoding, a sandboxed iframe plus an origin-checked postMessage protocol with handshake and request/response correlation, debounced auto-resize, an <onegrid-embed> custom element, oEmbed + Open Graph unfurl payloads, and host capability negotiation.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

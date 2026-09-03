@@ -44,6 +44,7 @@ import { V009Demo } from './v009-demo';
 import { V010Demo } from './v010-demo';
 import { V011Demo } from './v011-demo';
 import { V100Demo } from './v100-demo';
+import { StudioDemo } from './studio-demo';
 import { connectSsrm, SSRM_COLUMNS, type SsrmConnection } from './lib/ssrm';
 import {
   connectDuckDb,
@@ -263,7 +264,8 @@ type Mode =
   | 'duckdb'
   | 'pivot'
   | 'tree'
-  | 'ssrm-tree';
+  | 'ssrm-tree'
+  | 'studio';
 
 // Stable references so useOneGrid's effect doesn't re-fire while waiting
 // for async data sources to resolve.
@@ -1727,6 +1729,7 @@ export const App = (): JSX.Element => {
             <option value="pivot">Pivot</option>
             <option value="tree">Tree</option>
             <option value="ssrm-tree">SSRM Tree</option>
+            <option value="studio">Studio</option>
           </select>
         </label>
 
@@ -2155,10 +2158,16 @@ export const App = (): JSX.Element => {
         </div>
       )}
       <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
+        {mode === 'studio' ? (
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <StudioDemo />
+          </div>
+        ) : (
         <div
           ref={ref}
           style={{ flex: 1, position: 'relative', overflow: 'hidden' }}
         />
+        )}
         {showColumnPanel && (
           <div
             style={{
@@ -2218,7 +2227,7 @@ export const App = (): JSX.Element => {
             <V100Demo />
           </div>
         )}
-        {!dataReady && (
+        {!dataReady && mode !== 'studio' && (
           <div
             style={{
               position: 'absolute',

@@ -3,8 +3,8 @@
   "entries": [
     {
       "file": "dist/index.js",
-      "bytes": 1024,
-      "note": "Host-side typed wrapper. Real cost is in the worker bundle which inlines @onegrid/data."
+      "bytes": 11200,
+      "note": "Host-side typed wrapper plus the SharedArrayBuffer ViewportBuffer/transport and the WorkerPool budget controller. Measured 8.43 KB gzipped; budget is ~30% above that. All three are separate modules under sideEffects:false, so an adopter who imports only createDataWorker tree-shakes the rest away."
     },
     {
       "file": "dist/worker.js",

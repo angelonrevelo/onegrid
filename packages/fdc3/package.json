@@ -1,0 +1,39 @@
+{
+  "name": "@onegrid/fdc3",
+  "version": "1.0.0",
+  "description": "FDC3 2.0 desktop-interop binding for oneGrid — typed context objects, a column-to-context mapping compiler with required-field validation, and a bridge that broadcasts the selected row to peer trading-desk apps, raises intents, and translates inbound context back into grid actions. No-ops cleanly when no desktop agent is present.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

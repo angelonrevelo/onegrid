@@ -16,6 +16,9 @@
 export { createPgDataSource } from './datasource';
 export type { PgDataSourceOptions, PgQueryable } from './datasource';
 
+export { createHttpQueryable } from './http';
+export type { HttpQueryableOption } from './http';
+
 export { createPgCdcAdapter, SnapshotRequired } from './cdc';
 export type {
   PgCdcAdapter,

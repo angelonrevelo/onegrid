@@ -221,7 +221,7 @@ export class HeadlessGrid {
     this.requestUpdate('columns');
   }
 
-  setRowSource(rowSource: RowSource, rowHeight: number | Float32Array): void {
+  setRowSource(rowSource: RowSource, rowHeight?: number | Float32Array): void {
     this.grid?.setRowSource(rowSource, rowHeight);
     this.requestUpdate('rowSource');
   }

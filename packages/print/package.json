@@ -1,0 +1,39 @@
+{
+  "name": "@onegrid/print",
+  "version": "1.0.0",
+  "description": "Print and advanced export for oneGrid — a pagination engine that lays rows and columns onto real A4/Letter/Legal/A3 page boxes (column banding with repeated key columns, no row ever split across a page break, correct total page counts), a dependency-free PDF writer, a @media print stylesheet emitter for native browser printing, canvas screenshot capture with tall-grid tiling, and format-preserving styled output that carries number formats, alignment and conditional colours instead of flattening to text.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/export": "workspace:*"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

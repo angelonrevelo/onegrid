@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/embed",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 11800,
+      "note": "Block descriptor + migration ladder, base64url codec, sandboxed iframe factory, origin-checked postMessage protocol, auto-resize, <onegrid-embed> custom element, oEmbed + Open Graph payloads, capability negotiation. Measured 9081 B gzipped; budget is ~30% headroom. A new schema version adds one migration rung — cheap. Anything that grows this materially probably belongs in the guest bundle, not the host-side embed layer."
+    }
+  ]
+}

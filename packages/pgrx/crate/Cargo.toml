@@ -1,0 +1,20 @@
+[package]
+name = "onegrid-pgrx"
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+description = "oneGrid SSRM block-fetch SQL compiler. Optional pg17 feature wraps it as a pgrx loadable extension; default cargo test stays Postgres-free."
+publish = false
+
+[lib]
+name = "onegrid_pgrx"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+# Optional loadable extension. Default cargo test does not compile pgrx.
+pg17 = ["dep:pgrx", "pgrx/pg17"]
+pg18 = ["dep:pgrx", "pgrx/pg18"]
+
+[dependencies]
+pgrx = { version = "0.19.2", optional = true, default-features = false }

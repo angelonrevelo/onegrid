@@ -25,10 +25,15 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const STABILITY_TAGS = ['@public', '@beta', '@internal', '@deprecated'];
 
-const REPO_ROOT = resolve(new URL('.', import.meta.url).pathname, '..');
+// NOTE: `new URL(...).pathname` yields a leading-slash path on Windows
+// (`/C:/Users/...`), which every fs call then rejects — the walk found no
+// package and the script exited 0 having checked NOTHING. Use fileURLToPath,
+// which is the platform-correct conversion.
+const REPO_ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 async function findPackageDirs() {
   const out = [];
@@ -184,6 +189,15 @@ async function main() {
 
   console.log('');
   console.log(`Checked ${totalChecked} package(s). Untagged exports: ${totalFindings}.`);
+
+  // A surface gate that inspected nothing is worse than no gate: it reports
+  // success for every future change. This fired for real — a Windows path bug
+  // made the package walk return empty and the script exited 0 having checked
+  // zero packages. Refuse that outcome loudly.
+  if (totalChecked === 0) {
+    console.error('FAIL: checked 0 packages — the package walk is broken, not the repo.');
+    process.exit(1);
+  }
   process.exit(totalFindings === 0 ? 0 : 1);
 }
 

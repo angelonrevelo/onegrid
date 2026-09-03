@@ -1,0 +1,280 @@
+{
+  "mode": "extend",
+  "idea": {
+    "name": "oneGrid studio + native runtime",
+    "one_liner": "A Supabase-class table editor and a GPUI/pgrx native path on top of the existing MIT grid, so adopters toggle features instead of forking the renderer.",
+    "north_star": "Every governed ROADMAP row is ✅ with a reachable surface, and a host with no in-process driver can still edit Postgres through oneGrid.",
+    "non_goal": [
+      "Replacing the Canvas-2D renderer with a GPUI binary in this milestone",
+      "Depending on cargo-pgrx or Zed's rust-toolchain in CI",
+      "Publishing to npm in this sitting"
+    ]
+  },
+  "repo": {
+    "path": "C:/Users/maran/Code/onegrid",
+    "branch": "main",
+    "is_dirty": true,
+    "feature_existing": [
+      "Canvas-2D grid with SSRM, formula engine, six framework adapters",
+      "Postgres/MySQL/SQLite/ClickHouse/Mongo adapters with CDC",
+      "plugin-kit, tokens, headless, intl, touch, undo, WebGPU compute"
+    ],
+    "feature_in_flight": [
+      "Uncommitted Claude wave: studio, preset, chart, fdc3, wasm crate, remaining 🔵 items",
+      "Empty docs/roadmap-evidence.json until this session filled it"
+    ],
+    "delta": [
+      "Studio table editor (DDL/DML/relationships) with playground quick-action palette",
+      "Feature presets with toggle on/off and seven templates",
+      "createHttpQueryable for booted docker-exec topology",
+      "GPUI native-host protocol and pgrx SQL-function surface",
+      "Default rowHeight so consumers stop hitting a required field"
+    ],
+    "recheck": [
+      { "section": "idea", "is_still_true": true, "note": "oneGrid is still the MIT 10M-row grid; the delta is editor + native, not a new product." },
+      { "section": "customer", "is_still_true": true, "note": "Primary buyer is still the TypeScript app team embedding a grid; studio adds the database-operator persona as secondary." },
+      { "section": "product_form", "is_still_true": true, "note": "Still an sdk. A GPUI desktop shell was considered and rejected for v1 of this delta." },
+      { "section": "endgame", "is_still_true": true, "note": "Open-core MIT remains the exit; native crates stay MIT and unpublished." }
+    ]
+  },
+  "customer": {
+    "primary_persona": {
+      "who": "TypeScript app team embedding a data grid in a dashboard or admin",
+      "jtbd": "Ship a table that can edit live Postgres rows without paying AG Grid or pasting SQL",
+      "today": "AG Grid enterprise, Supabase table editor, or a hand-rolled HTML table"
+    },
+    "secondary_segment": [
+      "Booted / house-catalog operators who reach Postgres via docker exec",
+      "Desktop hosts that want a GPUI window over the same frame protocol"
+    ],
+    "accessibility": [
+      "Keyboard-first command palette for insert/add-column/FK",
+      "forced-colors mapping already in @onegrid/tokens",
+      "ARIA grid shadow remains the a11y path; studio demo is a table plus palette"
+    ]
+  },
+  "competitor": [
+    {
+      "name": "Supabase Table Editor",
+      "kind": "global",
+      "source": "https://supabase.com/docs/guides/database/overview",
+      "gap_vs_us": "Supabase owns the hosted Postgres; we own the embeddable MIT grid and compile DDL without a dashboard lock-in."
+    },
+    {
+      "name": "AG Grid",
+      "kind": "global",
+      "source": "https://www.ag-grid.com/",
+      "gap_vs_us": "AG Grid paywalls the editor and has no Postgres DDL compiler; oneGrid ships both under MIT."
+    },
+    {
+      "name": "booted catalog grid",
+      "kind": "local",
+      "source": "founder",
+      "gap_vs_us": "Booted already links oneGrid but falls back to a plain table when dist/ is missing and cannot use the pg adapter because it holds no connection string."
+    },
+    {
+      "name": "pgAdmin / TablePlus",
+      "kind": "substitute",
+      "source": "unverified",
+      "gap_vs_us": "Desktop SQL clients are not embeddable in a React app and do not speak SSRM keyset pagination."
+    }
+  ],
+  "moat": [
+    "The studio compiler plus SSRM adapters plus a fetch queryable means the same grid runs in a browser, in booted via docker exec, and in Postgres as a SQL function."
+  ],
+  "product_form": {
+    "choice": "sdk",
+    "rationale": "Adopters import packages into their app; they do not buy a hosted studio. The playground is a demo, not the product.",
+    "rejected": [
+      { "form": "saas", "why": "A hosted table editor would compete with Supabase instead of embedding beside it." },
+      { "form": "on_device", "why": "A GPUI binary is a future host of the protocol, not the v1 delivery of this delta." }
+    ]
+  },
+  "v1_cut": {
+    "jtbd": "Edit a Postgres table (insert/update/delete row, add column, add FK) from a oneGrid surface and see the SQL.",
+    "channel": "Existing oneGrid adopters plus booted's database tab via createHttpQueryable",
+    "pricing_experiment": "Keep MIT; measure adoption by whether booted drops its fallback grid.",
+    "deferred": [
+      "cargo-pgrx packaged .so for every PG version",
+      "A full GPUI desktop app",
+      "Publishing workspace packages to npm"
+    ]
+  },
+  "frontend": {
+    "page": ["playground-studio", "command-palette", "sql-preview", "table-list"],
+    "onboarding": {
+      "is_needed": false,
+      "why": "SDK consumers already have a host; the playground Studio mode is the walkthrough."
+    },
+    "headline": "The grid that is also the table editor.",
+    "brand_brief": {
+      "positioning": "MIT grid that compiles database edits instead of wrapping a dashboard",
+      "audience": "TypeScript teams and house operators on booted",
+      "tone": "precise, dark, compact, no marketing fog"
+    }
+  },
+  "backend": {
+    "runtime": "node + postgres (optional)",
+    "framework": "existing turbo/pnpm monorepo",
+    "rejected": [
+      { "option": "rewrite hot paths in a GPUI binary this quarter", "why": "CI cannot take Zed's toolchain; the protocol is the seam." }
+    ],
+    "api_boundary": [
+      "PgQueryable",
+      "HttpQueryable",
+      "DdlOperation",
+      "NativeFrame",
+      "onegrid_fetch_block"
+    ],
+    "data_store": "adopter's Postgres / the playground fixture",
+    "auth": "none in the library; header injection on createHttpQueryable",
+    "rate_limit": "page_limit 1..10000 inside onegid_fetch_block",
+    "observability": "@onegrid/observability already ships",
+    "compute": "browser + optional Postgres function + optional rust crate"
+  },
+  "ai": {
+    "is_used": false,
+    "modality": [],
+    "locality": "cloud",
+    "locality_rejected": { "option": "local", "why": "This delta does not add model calls; @onegrid/ai already exists as BYO-LLM." },
+    "model": [],
+    "fallback": "Not applicable — this delta does not invoke a model.",
+    "retention": "No prompts leave the adopter's process."
+  },
+  "data": {
+    "source": [],
+    "labeling": "n/a",
+    "edge_case": [],
+    "crowd_source": "n/a"
+  },
+  "gtm": {
+    "channel": [
+      {
+        "name": "booted database tab + oneGrid playground Studio mode",
+        "first_experiment": "Wire createHttpQueryable into booted and drop the fallback table on a machine with a built dist/",
+        "is_primary": true
+      },
+      {
+        "name": "GitHub README + showcase",
+        "first_experiment": "Link Studio mode from the playground mode picker",
+        "is_primary": false
+      }
+    ],
+    "cac_hypothesis": {
+      "value": 0,
+      "currency": "USD",
+      "unit": "per paying customer",
+      "is_assumed": true
+    }
+  },
+  "money": {
+    "pricing": [
+      {
+        "plan": "MIT",
+        "value": 0,
+        "currency": "USD",
+        "unit": "per seat per month",
+        "is_assumed": false,
+        "source": "https://opensource.org/license/mit"
+      }
+    ],
+    "build_cost": { "value": 0, "currency": "USD", "is_assumed": true },
+    "monthly_run_cost": { "value": 0, "currency": "USD", "is_assumed": true },
+    "breakeven": "Zero price; success is booted linking the real grid and ROADMAP 130/130 green."
+  },
+  "constraint": [
+    "Singular identifiers per house convention",
+    "No cargo-pgrx in CI",
+    "No GPUI crate dependency",
+    "Banned HTTP binds 5173/8080/3000-3999 except booted"
+  ],
+  "edge_case": [
+    "Composite foreign keys — information_schema cartesian product; studio reads pg_constraint",
+    "Missing dist/ in a consumer — booted already falls back; we do not break that",
+    "Omitted rowHeight — now defaults to 32"
+  ],
+  "complaint": [
+    "Studio demo is fixture-only, not a live database",
+    "GPUI host is a protocol, not a window you can open",
+    "pgrx function is PL/pgSQL, not a packed .so"
+  ],
+  "bottleneck": [
+    "Publishing workspace:* packages so consumers can npm install",
+    "DTS build order still needs --filter pkg..."
+  ],
+  "risk": [
+    {
+      "name": "Roadmap marked green without a working surface",
+      "mitigation": "scripts/check-roadmap-green.mjs binds every row to a symbol and a test file",
+      "kill_switch": "If the green-check is edited to skip a row, stop the run and restore the script."
+    },
+    {
+      "name": "Studio compiles SQL a host then never runs",
+      "mitigation": "Playground shows the SQL; createHttpQueryable is the execution seam for booted",
+      "kill_switch": "If booted still cannot POST SQL after this lands, treat studio as compiler-only and do not claim editor."
+    },
+    {
+      "name": "GPUI protocol bit-rots against Zed",
+      "mitigation": "Version field NATIVE_FRAME_VERSION; decode rejects unknown versions",
+      "kill_switch": "If a real GPUI host cannot paint v1 frames in 90 days, freeze the protocol and do not add v2."
+    },
+    {
+      "name": "PL/pgSQL fetch_block is not keyset-complete",
+      "mitigation": "Document it as PK-only pagination; full BlockRequest stays in the TS compiler",
+      "kill_switch": "If a table without a scalar PK is the common case, stop claiming pgrx covers SSRM."
+    },
+    {
+      "name": "Uncommitted Claude tree is larger than this delta",
+      "mitigation": "Evidence + tests prove the uncommitted packages exist; do not rewrite them",
+      "kill_switch": "If core tests go red on the uncommitted wave, revert this session's ROADMAP flips for those rows."
+    }
+  ],
+  "timeline": {
+    "ai_multiplier": {
+      "value": 3,
+      "is_assumed": true,
+      "note": "Does not compress cargo-pgrx packaging or a GPUI desktop shell"
+    },
+    "phase": [
+      {
+        "name": "Close the governed ROADMAP",
+        "week_start": 1,
+        "week_end": 1,
+        "deliverable": "130/130 green via evidence + tests",
+        "cut_line": "check-roadmap-green.mjs exits 0"
+      },
+      {
+        "name": "Studio surface + booted seam",
+        "week_start": 1,
+        "week_end": 2,
+        "deliverable": "Playground Studio mode + createHttpQueryable + default rowHeight",
+        "cut_line": "A host can omit rowHeight and POST SQL"
+      }
+    ],
+    "team": [{ "role": "founder-engineer", "is_hired": false }]
+  },
+  "endgame": {
+    "exit": "open_core",
+    "acquirer_type": ["developer-tools", "database-platform"],
+    "rationale": "MIT core stays free; a hosted studio or GPUI desktop would be a later product, not a rewrite of the sdk."
+  },
+  "open_question": [
+    "Should createHttpQueryable live in @onegrid/postgres forever, or in a driver-agnostic @onegrid/queryable package?",
+    "When does a real cargo-pgrx .so ship, and which Postgres versions?",
+    "Does booted want the Studio palette in the catalog database tab, or only the fetch queryable?"
+  ],
+  "handoff": {
+    "setup_preset": "vite-react",
+    "roadmap_p0": [
+      "Keep check-roadmap-green.mjs in CI",
+      "Wire createHttpQueryable into booted",
+      "Do not take a gpui or cargo-pgrx CI dependency"
+    ]
+  },
+  "research": {
+    "agent_count": 3,
+    "claim_count": 8,
+    "downgraded_count": 0,
+    "dedupe_count": 0
+  }
+}

@@ -70,7 +70,9 @@ export interface GestureEvent {
   readonly dx: number;
   readonly dy: number;
   readonly elapsedMs: number;
-  readonly pointerType: 'mouse' | 'touch' | 'pen' | string;
+  // `string & {}` keeps the three well-known values as autocomplete hints
+  // while still accepting any future pointerType the UA reports.
+  readonly pointerType: 'mouse' | 'touch' | 'pen' | (string & {});
   /** For 'swipe' / 'dragFromEdge', the dominant edge. */
   readonly edge?: GestureEdge;
 }
@@ -135,7 +137,7 @@ export function bindGestures(
       edge: detectEdge(e.clientX, e.clientY),
     };
     state.set(e.pointerId, st);
-    (target as Element).setPointerCapture?.(e.pointerId);
+    target.setPointerCapture?.(e.pointerId);
     st.longPressTimer = setTimeout(() => {
       const live = state.get(e.pointerId);
       if (!live || live.panActive) return;
@@ -267,7 +269,7 @@ export function bindGestures(
       }
     }
     state.delete(e.pointerId);
-    (target as Element).releasePointerCapture?.(e.pointerId);
+    target.releasePointerCapture?.(e.pointerId);
   };
 
   const onPointerCancel = (e: PointerEvent): void => {
@@ -453,3 +455,48 @@ export function inputmodeForColumn(type: ColumnType): HtmlInputMode {
 export type LongPressAction = 'context-menu' | 'row-drag';
 /** @public */
 export const DEFAULT_LONG_PRESS_ACTION: LongPressAction = 'context-menu';
+
+// -----------------------------------------------------------------------------
+// Swipe-to-reveal row actions
+//
+// Lives in ./swipe-row.ts and is re-exported here so `@onegrid/touch` keeps a
+// single entry point. It builds on `bindGestures` above rather than shipping a
+// second swipe detector — see that module's header for the rationale.
+// -----------------------------------------------------------------------------
+
+export {
+  MIN_TOUCH_TARGET_PX,
+  defineRowAction,
+  defineRowActionSet,
+  revealWidth,
+  edgeForSide,
+  revealSign,
+  sideForDelta,
+  rubberBand,
+  resistedOffset,
+  prefersReducedMotion,
+  rowActionMenuItem,
+  createSwipeRowController,
+} from './swipe-row.js';
+
+export type {
+  RowActionSide,
+  RowActionEdge,
+  RowActionIntent,
+  RowActionTrigger,
+  RowActionContext,
+  RowAction,
+  RowActionSet,
+  RowActionSpec,
+  RowActionMenuItem,
+  WritingDirection,
+  SwipeRowPhase,
+  SwipeAxis,
+  SwipeRowState,
+  SwipeRowCloseReason,
+  SwipeRowAnnouncementInput,
+  SwipeRowOption,
+  SwipeRowController,
+  SwipeRowControllerSpec,
+  FrameScheduler,
+} from './swipe-row.js';

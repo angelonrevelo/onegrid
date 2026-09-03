@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/bigquery",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 8704,
+      "note": "Gzipped GoogleSQL compiler + DataSource + outbox CDC + type mapper. Measured 6597 B; budget is ~30% headroom. Zero runtime dependencies beyond @onegrid/protocol — @google-cloud/bigquery does not ship with this."
+    }
+  ]
+}

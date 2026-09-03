@@ -20,7 +20,7 @@
 //   OG_I18N_INVALID_LOCALE      BCP 47 validation failed
 // =============================================================================
 
-import type { GridOptions } from './types.js';
+import { DEFAULT_ROW_HEIGHT, type GridOptions } from './types.js';
 
 // -----------------------------------------------------------------------------
 // Nested-form types
@@ -31,7 +31,7 @@ export interface NestedGridOptions {
   readonly data: {
     readonly rowSource: GridOptions['rowSource'];
     readonly columns: GridOptions['columns'];
-    readonly rowHeight: GridOptions['rowHeight'];
+    readonly rowHeight?: GridOptions['rowHeight'];
   };
   readonly columns?: {
     readonly enableReorder?: boolean;
@@ -150,7 +150,7 @@ function flattenNested(input: NestedGridOptions): GridOptions {
     host: input.host,
     rowSource: input.data.rowSource,
     columns: input.data.columns,
-    rowHeight: input.data.rowHeight,
+    rowHeight: input.data.rowHeight ?? DEFAULT_ROW_HEIGHT,
   };
   if (input.columns) {
     if (input.columns.enableReorder !== undefined)
@@ -233,6 +233,9 @@ function validate(opt: GridOptions, input: NestedGridOptions | GridOptions): voi
   if (!opt.columns || opt.columns.length === 0)
     throw new Error(`[OG_INVALID_OPTION] columns must be non-empty`);
   if (!opt.rowSource) throw new Error(`[OG_INVALID_OPTION] rowSource is required`);
+  if (opt.rowHeight === undefined) {
+    (opt as { rowHeight: number }).rowHeight = DEFAULT_ROW_HEIGHT;
+  }
   if (
     typeof opt.rowHeight !== 'number' &&
     !(opt.rowHeight instanceof Float32Array)

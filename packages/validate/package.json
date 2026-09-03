@@ -1,0 +1,39 @@
+{
+  "name": "@onegrid/validate",
+  "version": "1.0.0",
+  "description": "Cross-cell, row-level and sheet-level validation for oneGrid. Composes onto the per-cell validator in @onegrid/core rather than replacing it: row predicates (end_date > start_date), sheet predicates (uniqueness, referential integrity, group sums, row-count bounds), incremental revalidation driven by the formula engine's dependency graph, topological rule ordering with a bounded pass cap that breaks cycles instead of hanging, AbortController-based async rules, and error/warning/info severity with blockCommit semantics.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/formula": "workspace:*"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

@@ -3,8 +3,48 @@
   "entries": [
     {
       "file": "dist/index.js",
-      "bytes": 30720,
-      "note": "Canvas renderer + ARIA shadow + FenwickHeights + selection + editing. Hard floor — every feature ships through this. Bump only with justification."
+      "bytes": 39936,
+      "note": "[budget-bump: core] Canvas renderer + ARIA shadow + FenwickHeights + selection + editing. Raised from 30720 to match the measured 36.27 KB the v1.2 interaction waves (24-26: find/replace, row drag-reorder, mid-table pinning, overlays, auto-size, Excel keyboard nav) actually cost — the budget had not been re-measured since those landed, so the gate was failing on shipped, intended work rather than on a regression. Headroom is deliberately thin (~10%): this is the bundle every adopter pays for. New optional features go in a dist/feature/* sub-path entry below, not here."
+    },
+    {
+      "file": "dist/feature/span.js",
+      "bytes": 1792,
+      "note": "Merged cells (row + column span) — opt-in via `@onegrid/core/span`."
+    },
+    {
+      "file": "dist/feature/damage.js",
+      "bytes": 1152,
+      "note": "Incremental-redraw dirty-rect protocol — opt-in via `@onegrid/core/damage`."
+    },
+    {
+      "file": "dist/feature/conditional-format.js",
+      "bytes": 2304,
+      "note": "Colour scales / data bars / icon sets — opt-in via `@onegrid/core/conditional-format`."
+    },
+    {
+      "file": "dist/feature/schema-evolution.js",
+      "bytes": 1280,
+      "note": "Runtime schema-change reconciliation — opt-in via `@onegrid/core/schema-evolution`."
+    },
+    {
+      "file": "dist/feature/navigation-history.js",
+      "bytes": 896,
+      "note": "Range navigation back/forward — opt-in via `@onegrid/core/navigation-history`."
+    },
+    {
+      "file": "dist/feature/reorder.js",
+      "bytes": 1792,
+      "note": "Tree/group-aware + multi-row drag reorder — opt-in via `@onegrid/core/reorder`."
+    },
+    {
+      "file": "dist/feature/layout.js",
+      "bytes": 2432,
+      "note": "Header wrap + page-level sticky header + column-group visibility — opt-in via `@onegrid/core/layout`."
+    },
+    {
+      "file": "dist/feature/multi-select.js",
+      "bytes": 3072,
+      "note": "Multi-value chip cell type + popover editor — opt-in via `@onegrid/core/multi-select`."
     }
   ]
 }

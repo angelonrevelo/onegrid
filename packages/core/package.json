@@ -12,6 +12,46 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./span": {
+      "types": "./dist/feature/span.d.ts",
+      "import": "./dist/feature/span.js",
+      "require": "./dist/feature/span.cjs"
+    },
+    "./damage": {
+      "types": "./dist/feature/damage.d.ts",
+      "import": "./dist/feature/damage.js",
+      "require": "./dist/feature/damage.cjs"
+    },
+    "./conditional-format": {
+      "types": "./dist/feature/conditional-format.d.ts",
+      "import": "./dist/feature/conditional-format.js",
+      "require": "./dist/feature/conditional-format.cjs"
+    },
+    "./schema-evolution": {
+      "types": "./dist/feature/schema-evolution.d.ts",
+      "import": "./dist/feature/schema-evolution.js",
+      "require": "./dist/feature/schema-evolution.cjs"
+    },
+    "./navigation-history": {
+      "types": "./dist/feature/navigation-history.d.ts",
+      "import": "./dist/feature/navigation-history.js",
+      "require": "./dist/feature/navigation-history.cjs"
+    },
+    "./reorder": {
+      "types": "./dist/feature/reorder.d.ts",
+      "import": "./dist/feature/reorder.js",
+      "require": "./dist/feature/reorder.cjs"
+    },
+    "./layout": {
+      "types": "./dist/feature/layout.d.ts",
+      "import": "./dist/feature/layout.js",
+      "require": "./dist/feature/layout.cjs"
+    },
+    "./multi-select": {
+      "types": "./dist/feature/multi-select.d.ts",
+      "import": "./dist/feature/multi-select.js",
+      "require": "./dist/feature/multi-select.cjs"
     }
   },
   "files": [

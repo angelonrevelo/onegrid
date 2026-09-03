@@ -1,0 +1,36 @@
+{
+  "name": "@onegrid/permission",
+  "version": "1.0.0",
+  "description": "Declarative row-level security and column permissions for oneGrid. Policies compile into a FilterModel fragment the adapter ANDs into every BlockRequest (server-canonical) and into a visible/writable column projection with value masking (client-cosmetic). Role inheritance, principal-attribute conditions for multi-tenancy, and most-restrictive-wins conflict resolution.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/protocol": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

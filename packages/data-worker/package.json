@@ -1,7 +1,7 @@
 {
   "name": "@onegrid/data-worker",
   "version": "1.0.0",
-  "description": "Web Worker offload for @onegrid/data sort / filter / group / pivot. Keeps 1M-row operations off the render thread so the grid stays at 60 FPS while compute runs.",
+  "description": "Web Worker offload for @onegrid/data sort / filter / group / pivot. Keeps 1M-row operations off the render thread so the grid stays at 60 FPS while compute runs. Also ships a SharedArrayBuffer viewport (seqlock-synchronised, wait-free reader, postMessage fallback when the page is not cross-origin isolated) and a worker-pool budget controller that caps how many cores the grid consumes.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

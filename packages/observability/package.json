@@ -1,0 +1,33 @@
+{
+  "name": "@onegrid/observability",
+  "version": "1.0.0",
+  "description": "Error boundaries and observability for oneGrid — a typed GridError taxonomy with stable machine-readable codes, per-cell error isolation with a repeated-failure circuit breaker, redaction-first structured logging, OpenTelemetry-shaped breadcrumbs against an injected tracer, and streaming frame-timing / gauge counters. Zero runtime dependencies; the adopter supplies the sink.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

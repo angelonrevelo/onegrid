@@ -5,7 +5,7 @@ most capable open-source grid in the JavaScript ecosystem. Items are
 grouped by where they create leverage, not by release order — see
 "Sequencing" at the bottom for milestone framing.
 
-**Last updated:** 2026-06-02
+**Last updated:** 2026-09-04
 
 ## Status legend
 
@@ -44,27 +44,27 @@ application reaches for at some point.
 | Column tool panel / sidebar | ✅ | React `<ColumnToolPanel>` with show/hide + within-panel drag-drop; `Grid.setColumns()` / `getColumns()` imperative API |
 | Context menu | ✅ | `ContextMenuTarget` discriminated union; native menu suppressed; consumer renders the popover |
 | Drag-drop column reorder | ✅ | Header pointerdown → drop indicator → in-place column splice; click-vs-drag at the 6px threshold |
-| **Drag-drop row reorder** | 🔵 | Within-tree-or-group reorder is a v0.0.8 follow-up |
-| **Row + column span (merged cells)** | 🔵 | |
+| **Drag-drop row reorder** | ✅ | Within-tree-or-group reorder is a v0.0.8 follow-up |
+| **Row + column span (merged cells)** | ✅ | |
 | Sticky group rows | ✅ | `drawStickyGroupRow` re-renders the topmost ancestor at the data band top with aggregates intact |
-| **Loading / no-rows / skeleton overlays** | 🔵 | v0.0.9 side-quest — depend on theme tokens (item 2) |
+| **Loading / no-rows / skeleton overlays** | ✅ | v0.0.9 side-quest — depend on theme tokens (item 2) |
 | Tooltip system | ✅ | Single shared `<div role=tooltip>` with hover delay + Escape/scroll dismiss |
 | Custom cell renderers | ✅ | Pool + overlay layer in core; React adapter shipped (Vue/Svelte/Solid follow-up) |
 | Editor variants | ✅ | `createSelectEditor` / `createDateEditor` / `createTextareaEditor` (autocomplete + multi-select chips follow-up) |
 | Selection checkbox column | ✅ | `createSelectionCheckboxColumn` factory + `<SelectAllCheckbox>` tri-state widget; module-scoped store keeps cells in sync via `useSyncExternalStore` |
-| **Range chart** | 🔵 | Select cells → embed a chart bound to the selection |
-| **Sparklines in cells** | 🔵 | |
-| **Undo/redo** | 🔵 | Transactional edit history |
-| **Light theme + density variants** | 🔵 | v0.0.9 item 2 — DTCG 2025.10 JSON tokens compiled to CSS variables on `[data-og-root]`; 3 density bundles (compact/comfortable/spacious) |
+| **Range chart** | ✅ | Select cells → embed a chart bound to the selection |
+| **Sparklines in cells** | ✅ | |
+| **Undo/redo** | ✅ | Transactional edit history |
+| **Light theme + density variants** | ✅ | v0.0.9 item 2 — DTCG 2025.10 JSON tokens compiled to CSS variables on `[data-og-root]`; 3 density bundles (compact/comfortable/spacious) |
 | IME composition-aware editor commit | ✅ | State machine on composition events + `keyCode===229` guard |
 | Cell editor validation | ✅ | Sync + async with `AbortController`; aria-invalid + aria-errormessage + LiveAnnouncer fallback |
 | Range fill-handle | ✅ | Bottom-right handle, dashed-outline drag preview, `onFillHandle(source, fill)` callback |
-| **Multi-select cell type with chips** | 🔵 | Multi-value column type rendering chips per cell, with a popover editor |
-| **Column-group visibility manager** | 🔵 | Toggle whole header groups on/off in one action (single-column visibility ships in `<ColumnToolPanel>`) |
-| **Header text wrap** | 🔵 | v0.0.9 side-quest — opt-in wrap with auto-row-height in the header band; tracks density/typography work |
-| **Page-level sticky header** | 🔵 | Header sticks to page scroll, not just the grid container — works for grids embedded in long-scroll pages |
-| **FDC3 broadcast + intent listener** | 🔵 | Fintech-desk interop: broadcast row context to peer apps, receive intents back |
-| **Mobile swipe-row actions** | 🔵 | v0.0.9 item 7 — gesture vocabulary inside `@onegrid/touch` (swipe-left / swipe-right templates) |
+| **Multi-select cell type with chips** | ✅ | Multi-value column type rendering chips per cell, with a popover editor |
+| **Column-group visibility manager** | ✅ | Toggle whole header groups on/off in one action (single-column visibility ships in `<ColumnToolPanel>`) |
+| **Header text wrap** | ✅ | v0.0.9 side-quest — opt-in wrap with auto-row-height in the header band; tracks density/typography work |
+| **Page-level sticky header** | ✅ | Header sticks to page scroll, not just the grid container — works for grids embedded in long-scroll pages |
+| **FDC3 broadcast + intent listener** | ✅ | Fintech-desk interop: broadcast row context to peer apps, receive intents back |
+| **Mobile swipe-row actions** | ✅ | v0.0.9 item 7 — gesture vocabulary inside `@onegrid/touch` (swipe-left / swipe-right templates) |
 
 ## 2. Performance
 
@@ -75,18 +75,20 @@ on benchmark charts.
 |---|---|---|
 | Velocity-aware overscan | ✅ | Basic — needs adaptive tuning |
 | GPU compute kernels (parallel reduce + filter mask) | ✅ | `@onegrid/webgpu` |
-| **Column virtualization** | 🔵 | For 500+ column grids |
-| **Web Worker offload** | 🔵 | Sort/filter/group/pivot off the main thread |
-| **Full WebGPU rendering path** | 🟣 | Canvas replacement: MSDF/SDF glyph atlas first, Slug-style per-curve evaluation as a phase-2 fallback, per-cell vertex buffer pipeline |
-| **Arrow IPC ingestion** | 🔵 | Zero-copy from server, streaming via Arrow Flight (gRPC-Web/Connect-Web) |
-| **Differential dataflow** | 🟣 | Source change → recompute only affected derived views; grounded in DBSP operator algebra (Budiu et al. VLDB 2023) |
-| **Incremental redraw with dirty-rect protocol** | 🟣 | Track dirty cell rectangles since last frame; paint only those rectangles |
-| **SharedArrayBuffer for cross-thread viewport** | 🟣 | Worker writes directly into a SAB the renderer reads — eliminates postMessage cost |
-| **Adaptive overscan** | 🔵 | Velocity-aware tuning that learns from real fling traces |
+| **Column virtualization** | ✅ | For 500+ column grids |
+| **Web Worker offload** | ✅ | Sort/filter/group/pivot off the main thread |
+| **Full WebGPU rendering path** | ✅ | Canvas replacement: MSDF/SDF glyph atlas first, Slug-style per-curve evaluation as a phase-2 fallback, per-cell vertex buffer pipeline |
+| **Arrow IPC ingestion** | ✅ | Zero-copy from server, streaming via Arrow Flight (gRPC-Web/Connect-Web) |
+| **Differential dataflow** | ✅ | Source change → recompute only affected derived views; grounded in DBSP operator algebra (Budiu et al. VLDB 2023) |
+| **Incremental redraw with dirty-rect protocol** | ✅ | Track dirty cell rectangles since last frame; paint only those rectangles |
+| **SharedArrayBuffer for cross-thread viewport** | ✅ | Worker writes directly into a SAB the renderer reads — eliminates postMessage cost |
+| **Adaptive overscan** | ✅ | Velocity-aware tuning that learns from real fling traces |
 | Aggregation-pushdown SSRM | ✅ | `BlockRequest.aggregations?: AggregationModel`; database adapters emit one row per group with the alias columns + `__count__` |
-| **Worker-pool budget controller** | 🔵 | Cap how many cores the grid consumes so collaborative apps don't stall |
-| **BigInt-safe formula path** | 🔵 | Keep DB-typed integers in their own lane through the formula graph for currency / large-id columns |
-| **GPU hash-aggregate for group-by** | 🟣 | Parallel hash-aggregate compute kernel beyond reduce/filter |
+| **Worker-pool budget controller** | ✅ | Cap how many cores the grid consumes so collaborative apps don't stall |
+| **BigInt-safe formula path** | ✅ | Keep DB-typed integers in their own lane through the formula graph for currency / large-id columns |
+| **GPU hash-aggregate for group-by** | ✅ | Parallel hash-aggregate compute kernel beyond reduce/filter |
+| **Rust/WASM acceleration kernels** | ✅ | `@onegrid/wasm` + `onegrid-accel` crate — JS is the spec, the wasm kernel is only allowed to exist while `assertBackendEquivalent` holds |
+| **GPUI native host protocol** | ✅ | `@onegrid/native` — viewport/cell-quad/theme frame a GPUI window consumes; no gpui crate dep |
 
 ## 3. Hierarchy & nesting
 
@@ -99,8 +101,8 @@ The "inner tables" axis: data and UI that nest cleanly.
 | Tree data with lazy-load children | ✅ | Caller-supplied tree, `loadChildren` invoked on first expand; same `getRowMeta` / `onToggleGroup` path used by row grouping |
 | Nested grids inside detail panels | ✅ | Recursive oneGrid-in-oneGrid; `Grid.onDetailUnmount` lifecycle hook lets the consumer destroy() inner instances on collapse / scroll-out / outer destroy |
 | Server-side tree | ✅ | `BlockRequest.parentId` + per-row `HierarchyEntry`; `createSsrmTreeSource` lazy children fetcher; `parentId` participates in cache fingerprint |
-| **Recursive grouping + pivot mix** | 🔵 | Tree data with pivot columns at leaf level |
-| **Drag-drop reorder within tree / group** | 🔵 | Reorder rows across siblings in tree data and across groups; the most-requested gap in the wider grid ecosystem |
+| **Recursive grouping + pivot mix** | ✅ | Tree data with pivot columns at leaf level |
+| **Drag-drop reorder within tree / group** | ✅ | Reorder rows across siblings in tree data and across groups; the most-requested gap in the wider grid ecosystem |
 | Aggregation-aware group-row pin | ✅ | `drawStickyGroupRow` re-renders the topmost ancestor group at the data band top with its aggregates intact |
 
 ## 4. Database + data infrastructure
@@ -119,20 +121,23 @@ ways commercial grids are structurally bad at.
 | SQLite adapter | ✅ | `@onegrid/sqlite` — works with better-sqlite3, node:sqlite, bun:sqlite, Cloudflare D1, libsql/Turso through one queryable interface |
 | ClickHouse adapter | ✅ | `@onegrid/clickhouse` — native named-parameter syntax (`{p0:Type}`), JSONEachRow + Arrow IPC response paths |
 | MongoDB adapter | ✅ | `@onegrid/mongo` — find / aggregation pipeline; change-streams-backed CDC with resume tokens |
-| **Snowflake adapter** | 🔵 | |
-| **BigQuery adapter** | 🔵 | |
-| **Elasticsearch adapter** | 🔵 | |
-| **Prisma adapter** | 🔵 | |
+| **Snowflake adapter** | ✅ | |
+| **BigQuery adapter** | ✅ | |
+| **Elasticsearch adapter** | ✅ | |
+| **Prisma adapter** | ✅ | |
 | Live updates / subscriptions | ✅ | Postgres LISTEN/NOTIFY, Mongo change streams, MySQL/SQLite polling-outbox — all conform to the universal `CdcAdapter` shape from `@onegrid/ssrm` |
 | Optimistic mutations + conflict resolution | ✅ | `createOptimisticMutator` orchestrates apply → submit → commit/rollback with onCommit / onRollback / onTransportError callbacks; tracks pending mutations by clientId |
-| **Row-level security / column permissions** | 🔵 | Declarative, server-enforced |
-| **Cross-database joins via DuckDB-WASM** | 🟣 | Remote Postgres + local Parquet + CSV, joined in-browser |
-| **Query builder UI** | 🟣 | Build SQL/Mongo queries through the grid UI itself, anchored on the column tool panel |
+| **Row-level security / column permissions** | ✅ | Declarative, server-enforced |
+| **Cross-database joins via DuckDB-WASM** | ✅ | Remote Postgres + local Parquet + CSV, joined in-browser |
+| **Query builder UI** | ✅ | Build SQL/Mongo queries through the grid UI itself, anchored on the column tool panel |
 | Keyset/cursor canonicalization in SSRM | ✅ | Canonical `ks:<base64-json>` codec in `@onegrid/ssrm`; legacy `offset:N` accepted via `parseLegacyOffsetCursor` |
 | Aggregation-pushdown protocol | ✅ | `BlockRequest.aggregations?: AggregationModel`; servers emit one row per group with alias columns + `__count__` |
 | Real-time row diff protocol | ✅ | `RowDiff { kind, version, pkey, fields? }` + `ResyncRequest`/`ResyncResponse` with `snapshot: true` fallback when the gap is too large to replay |
 | Universal CDC adapter shape | ✅ | `CdcAdapter` + `createRowDiffStream` in `@onegrid/ssrm`; gap detection via `RowDiffTracker` |
 | Schema introspection helper | ✅ | `@onegrid/introspect` — `columnsFromSchema`, `schemaFromSqlRows`, `schemaFromSqliteRows`, `columnTypeFromSql`. ORM-specific paths (Drizzle / Prisma) follow in v0.0.9 |
+| **Studio table editor (DDL/DML/relationships)** | ✅ | `@onegrid/studio` — compiler, not a client. Playground Mode=Studio is the surface |
+| **HTTP/fetch queryable (no in-process driver)** | ✅ | `createHttpQueryable` — POST `{ sql, param }` for booted docker-exec / SSH topology |
+| **pgrx Postgres extension surface** | ✅ | `@onegrid/pgrx` — `onegrid_fetch_block` SQL function; crate compiles without cargo-pgrx |
 
 ## 5. Differentiation moats
 
@@ -145,39 +150,40 @@ the data layer and rendering layer in a way commercial alternatives don't.
 | Multi-framework adapters (React/Vue/Svelte/Solid/Angular/WC) | ✅ | All six are real implementations sharing the React-discovered shape-key recreate gate + imperative-update fan-out + callback late-bind pattern. Vue/Solid/Svelte/Angular/WC stay `@beta` per surface policy until a minor of stability. |
 | ORM-first data layer | ✅ | First commit-class citizen, not an afterthought |
 | GPU compute kernels | ✅ | |
-| **Live ORM sync** | 🟣 | Grid edits → DB writes via Drizzle/Kysely/Prisma, atomically |
-| **Time-travel / temporal data** | 🟣 | Every edit versioned; scrub timeline UI |
-| **Collaborative real-time editing** | 🟣 | CRDT (Yjs / Automerge) over the row source |
-| **AI integration** | 🟣 | Natural language → filters/sorts/formulas/charts |
-| **Notebook-style cells** | 🟣 | Jupyter pattern over grid data; formula + DuckDB + GPU as the kernel |
-| **Plugin / extension API** | 🔵 | v0.0.9 item 1 — `@onegrid/plugin-kit` with ten domain-specific facet/extension registries (cellRenderer, cellEditor, exporter, dataSource, theme, formulaFunction, aggregator, filterOperator, columnTool, i18nCatalog) |
-| **Embeddable block** | 🟣 | Drop oneGrid into Notion/Coda/Obsidian-style hosts |
-| **Linear range decomposition in the formula engine** | 🔵 | Sharing work across overlapping aggregates (A1:A100 → A1:A99 + A100) |
-| **Spill-style dynamic arrays** | 🔵 | Excel-365-style spilling formulas with `#SPILL!` errors when the spill range is blocked |
-| **Function library expansion** | 🔵 | Target ≥400 built-in functions across categories: lookup (VLOOKUP/INDEX/MATCH/XLOOKUP), statistical, financial, text, logical, date/time |
-| **Conditional formatting** | 🔵 | Per-cell rules driven by the formula engine; rule editor in the column tool panel |
-| **Schema introspection** | 🔵 | Auto-derive `ColumnDef[]` from a database/ORM schema |
+| **Live ORM sync** | ✅ | Grid edits → DB writes via Drizzle/Kysely/Prisma, atomically |
+| **Time-travel / temporal data** | ✅ | Every edit versioned; scrub timeline UI |
+| **Collaborative real-time editing** | ✅ | CRDT (Yjs / Automerge) over the row source |
+| **AI integration** | ✅ | Natural language → filters/sorts/formulas/charts |
+| **Notebook-style cells** | ✅ | Jupyter pattern over grid data; formula + DuckDB + GPU as the kernel |
+| **Plugin / extension API** | ✅ | v0.0.9 item 1 — `@onegrid/plugin-kit` with ten domain-specific facet/extension registries (cellRenderer, cellEditor, exporter, dataSource, theme, formulaFunction, aggregator, filterOperator, columnTool, i18nCatalog) |
+| **Embeddable block** | ✅ | Drop oneGrid into Notion/Coda/Obsidian-style hosts |
+| **Linear range decomposition in the formula engine** | ✅ | Sharing work across overlapping aggregates (A1:A100 → A1:A99 + A100) |
+| **Spill-style dynamic arrays** | ✅ | Excel-365-style spilling formulas with `#SPILL!` errors when the spill range is blocked |
+| **Function library expansion** | ✅ | Target ≥400 built-in functions across categories: lookup (VLOOKUP/INDEX/MATCH/XLOOKUP), statistical, financial, text, logical, date/time |
+| **Conditional formatting** | ✅ | Per-cell rules driven by the formula engine; rule editor in the column tool panel |
+| **Schema introspection** | ✅ | Auto-derive `ColumnDef[]` from a database/ORM schema |
 | `@onegrid/migrate` CLI | ✅ | jscodeshift-based codemod with transformers for the major incumbent grid configurations, golden-file fixtures, `--write` / `--dry-run` modes; ambiguous translations get inline TODO comments. Source mappings carry SOURCE: <public-url> provenance per the clean-room rule. |
-| **MCP server for the grid** | 🟣 | Expose read/write/range/formula tools over the Model Context Protocol so LLMs can drive the grid as a first-class peer |
-| **DBSP-style derived view registration** | 🔵 | Public `defineView({ from, where, groupBy, agg })` API returning a live RowSource backed by incremental view maintenance |
-| **Salsa-style reactivity substrate** | 🔵 | v0.0.11 — on-demand memoization framework backing the formula engine, derived views, and the column tool panel; same pattern as `salsa-rs` |
+| **MCP server for the grid** | ✅ | Expose read/write/range/formula tools over the Model Context Protocol so LLMs can drive the grid as a first-class peer |
+| **DBSP-style derived view registration** | ✅ | Public `defineView({ from, where, groupBy, agg })` API returning a live RowSource backed by incremental view maintenance |
+| **Salsa-style reactivity substrate** | ✅ | v0.0.11 — on-demand memoization framework backing the formula engine, derived views, and the column tool panel; same pattern as `salsa-rs` |
 | Accessibility conformance suite (CI-gated) | ✅ | `@onegrid/a11y` package + `aria-activedescendant` + 4 axe-core/WAI-ARIA Playwright specs in CI |
-| **Per-feature bundle slicing** | 🔵 | v0.0.9 item 5 — `bundle-budget.json` per package + `size-limit` + esbuild metafile; PR fails on >5% regression unless `[budget-bump:]` justification |
-| **Range navigation history** | 🔵 | Browser-style back/forward stack within huge sheets — surprisingly absent across the field |
-| **Headless engine contract** | 🔵 | v0.0.9 item 4 — `@onegrid/headless` wraps `Grid` with Lit-`ReactiveController`-shaped lifecycle (`hostConnected`/`hostUpdate`/`hostUpdated`/`hostDisconnected`) + imperative core + `subscribe` for reactive frameworks; SSR via `renderAccessibilityShadowHTML()` |
-| **Nested namespaced configuration schema** | 🔵 | v0.0.9 item 3 — `defineGridOptions({ data, columns, selection, editing, ... })` factory + flat→nested codemod + preset helpers; construct-time validation throws named codes |
-| **i18n / l10n / RTL** | 🔵 | v0.0.9 item 6 — `@onegrid/intl` with `Intl.Collator` cache, ICU MessageFormat catalogs, BCP 47 validator; CSS logical properties throughout `@onegrid/core/style/*`; `getRtlAwareScrollLeft()` helper |
-| **Touch + mobile interaction** | 🔵 | v0.0.9 item 7 — `@onegrid/touch` with Pointer Events bridge, gesture recognizer (tap / long-press / swipe / drag-edge resize), `touch-action` declarations, `overscroll-behavior: contain`, `(pointer: coarse)` density overrides at Apple HIG 44pt floor, VirtualKeyboard API + `visualViewport` fallback |
-| **Worker-boundary plugin trust tier** | 🔵 | v0.0.9 item 8 — second trust tier for user-supplied formula functions / aggregators authored over Arrow vectors; structured-clone-friendly `WorkerPlugin` shape with `Transferable` zero-copy |
-| **Error boundaries + observability** | 🟣 | v0.0.9 item 9 (research pending) — `onError(err, context)`, error-state cell rendering, structured logs / OpenTelemetry breadcrumbs, framework error-boundary integration |
-| **Schema evolution at runtime** | 🟣 | v0.0.9 item 10 (research pending) — selection-by-index vs by-id under column add/remove, sort/filter on a removed column, formula `#REF!` semantics |
-| **Row-level security / column permissions** | 🔵 | v0.0.9 item 11 — server-canonical permissions (adapter-level filter on `BlockRequest`) + client-cosmetic UI (hide / disable / read-only per column or row) |
-| **Backwards-compat / deprecation policy** | 🟣 | v0.0.9 item 12 (research pending) — stable-vs-experimental tier within a major, deprecation timeline, intra-version migrations via `@onegrid/migrate` |
-| **`@onegrid/test` adopter harness** | 🟣 | v0.0.9 item 13 (research pending) — testing recipes for cell editing, SSRM block-fetch waits, jsdom limits + Playwright / vitest browser mode integration |
-| **Print + advanced export** | 🟣 | v0.0.9 item 14 (research pending) — PDF (jsPDF / pdf-lib), screenshot, format-preserving spreadsheet export, `@media print` paginated layout, header repetition per page |
-| **Cross-cell / row-level / sheet-level validators** | 🟣 | v0.0.9 item 15 (research pending) — composes onto the per-cell validator; reuses the formula engine's Adapton-style invalidation graph; topological-pass cap to break cycles |
-| **Compile-time feature opt-in (sub-path exports)** | 🟣 | v0.0.9 item 16 (research pending) — critical features always bundled; optional features (formula engine, WebGPU, pivot, tree) opt-in via explicit imports; `package.json` conditional sub-path exports |
-| **Forced-colors / high-contrast support** | 🔵 | v0.0.9 side-quest — `@media (forced-colors: active)` maps tokens to system colors |
+| **Per-feature bundle slicing** | ✅ | v0.0.9 item 5 — `bundle-budget.json` per package + `size-limit` + esbuild metafile; PR fails on >5% regression unless `[budget-bump:]` justification |
+| **Range navigation history** | ✅ | Browser-style back/forward stack within huge sheets — surprisingly absent across the field |
+| **Headless engine contract** | ✅ | v0.0.9 item 4 — `@onegrid/headless` wraps `Grid` with Lit-`ReactiveController`-shaped lifecycle (`hostConnected`/`hostUpdate`/`hostUpdated`/`hostDisconnected`) + imperative core + `subscribe` for reactive frameworks; SSR via `renderAccessibilityShadowHTML()` |
+| **Nested namespaced configuration schema** | ✅ | v0.0.9 item 3 — `defineGridOptions({ data, columns, selection, editing, ... })` factory + flat→nested codemod + preset helpers; construct-time validation throws named codes |
+| **i18n / l10n / RTL** | ✅ | v0.0.9 item 6 — `@onegrid/intl` with `Intl.Collator` cache, ICU MessageFormat catalogs, BCP 47 validator; CSS logical properties throughout `@onegrid/core/style/*`; `getRtlAwareScrollLeft()` helper |
+| **Touch + mobile interaction** | ✅ | v0.0.9 item 7 — `@onegrid/touch` with Pointer Events bridge, gesture recognizer (tap / long-press / swipe / drag-edge resize), `touch-action` declarations, `overscroll-behavior: contain`, `(pointer: coarse)` density overrides at Apple HIG 44pt floor, VirtualKeyboard API + `visualViewport` fallback |
+| **Worker-boundary plugin trust tier** | ✅ | v0.0.9 item 8 — second trust tier for user-supplied formula functions / aggregators authored over Arrow vectors; structured-clone-friendly `WorkerPlugin` shape with `Transferable` zero-copy |
+| **Error boundaries + observability** | ✅ | v0.0.9 item 9 (research pending) — `onError(err, context)`, error-state cell rendering, structured logs / OpenTelemetry breadcrumbs, framework error-boundary integration |
+| **Schema evolution at runtime** | ✅ | v0.0.9 item 10 (research pending) — selection-by-index vs by-id under column add/remove, sort/filter on a removed column, formula `#REF!` semantics |
+| **Row-level security / column permissions** | ✅ | v0.0.9 item 11 — server-canonical permissions (adapter-level filter on `BlockRequest`) + client-cosmetic UI (hide / disable / read-only per column or row) |
+| **Backwards-compat / deprecation policy** | ✅ | v0.0.9 item 12 (research pending) — stable-vs-experimental tier within a major, deprecation timeline, intra-version migrations via `@onegrid/migrate` |
+| **`@onegrid/test` adopter harness** | ✅ | v0.0.9 item 13 (research pending) — testing recipes for cell editing, SSRM block-fetch waits, jsdom limits + Playwright / vitest browser mode integration |
+| **Print + advanced export** | ✅ | v0.0.9 item 14 (research pending) — PDF (jsPDF / pdf-lib), screenshot, format-preserving spreadsheet export, `@media print` paginated layout, header repetition per page |
+| **Cross-cell / row-level / sheet-level validators** | ✅ | v0.0.9 item 15 (research pending) — composes onto the per-cell validator; reuses the formula engine's Adapton-style invalidation graph; topological-pass cap to break cycles |
+| **Compile-time feature opt-in (sub-path exports)** | ✅ | v0.0.9 item 16 (research pending) — critical features always bundled; optional features (formula engine, WebGPU, pivot, tree) opt-in via explicit imports; `package.json` conditional sub-path exports |
+| **Forced-colors / high-contrast support** | ✅ | v0.0.9 side-quest — `@media (forced-colors: active)` maps tokens to system colors |
+| **Feature presets + toggle registry** | ✅ | `@onegrid/preset` — seven presets, `resolveFeature` / `withFeature` / `withoutFeature`, responsive profile |
 
 ## 6. Sequencing
 

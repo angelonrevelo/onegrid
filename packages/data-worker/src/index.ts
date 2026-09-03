@@ -15,6 +15,18 @@
 // `worker-loader`, esbuild's `--define`, etc.) and pass it to
 // `createDataWorker(worker)`. We don't ship a pre-bundled worker.js
 // because every build tool inlines workers differently.
+//
+// Two further pieces live alongside that client, because both are about the
+// COST of using a worker rather than the work itself:
+//
+//   ./viewport-buffer + ./viewport-transport — a SharedArrayBuffer viewport
+//     the worker writes and the renderer reads with a seqlock, so a scrolled
+//     window costs zero postMessage. Falls back to postMessage where
+//     cross-origin isolation is unavailable.
+//
+//   ./worker-pool — a concurrency budget. A grid is a component inside
+//     someone else's application; it must not consume every core just because
+//     `navigator.hardwareConcurrency` says they exist.
 // =============================================================================
 
 import {
@@ -103,3 +115,58 @@ export class DataWorker {
 export function createDataWorker(opts: DataWorkerOptions): DataWorker {
   return new DataWorker(opts);
 }
+
+// -----------------------------------------------------------------------------
+// SharedArrayBuffer viewport — see ./viewport-buffer for the seqlock rationale
+// and the byte layout, and ./viewport-transport for the postMessage fallback.
+// -----------------------------------------------------------------------------
+
+export {
+  ViewportBuffer,
+  computeViewportLayout,
+  isSharedMemoryAvailable,
+  VIEWPORT_LAYOUT_CONSTANT,
+} from './viewport-buffer.js';
+export type {
+  ViewportBufferOptions,
+  ViewportColumnKind,
+  ViewportColumnLayout,
+  ViewportColumnSpec,
+  ViewportFrame,
+  ViewportFrameColumn,
+  ViewportFrameInput,
+  ViewportLayout,
+  ViewportReadOptions,
+} from './viewport-buffer.js';
+
+export {
+  createViewportPublisher,
+  createViewportSubscriber,
+} from './viewport-transport.js';
+export type {
+  ViewportPortLike,
+  ViewportPublisher,
+  ViewportPublisherOptions,
+  ViewportSubscriber,
+  ViewportSubscriberOptions,
+  ViewportTransportMode,
+} from './viewport-transport.js';
+
+// -----------------------------------------------------------------------------
+// Worker-pool budget controller
+// -----------------------------------------------------------------------------
+
+export {
+  WorkerPool,
+  createWorkerPool,
+  isAbortError,
+  resolveWorkerCap,
+} from './worker-pool.js';
+export type {
+  PoolTask,
+  PoolTimer,
+  TaskPriority,
+  WorkerBudget,
+  WorkerPoolOptions,
+  WorkerPoolStat,
+} from './worker-pool.js';

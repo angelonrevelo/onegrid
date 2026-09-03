@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/permission",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 5120,
+      "note": "Policy model + FilterModel compiler + column projection + masking + mutation guard. Pure logic, no DOM, no deps beyond protocol types (erased at build). ~30% headroom over the measured 3.9 KB gzipped."
+    }
+  ]
+}

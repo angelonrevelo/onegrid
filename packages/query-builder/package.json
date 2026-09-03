@@ -1,0 +1,36 @@
+{
+  "name": "@onegrid/query-builder",
+  "version": "1.0.0",
+  "description": "Headless model + edit algebra behind a visual query builder for oneGrid. Nested AND/OR/NOT condition groups over typed columns, a type-derived operator catalogue for populating UI dropdowns, path-addressed validation errors, immutable edit operations, and compilation to the oneGrid protocol FilterModel, parameterised SQL (postgres/mysql/sqlite/clickhouse) or a MongoDB filter document.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/protocol": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

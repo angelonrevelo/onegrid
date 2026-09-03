@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/fdc3",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 7900,
+      "note": "Context type table + mapping compiler + bridge + context-to-action translator. Pure logic, zero runtime deps — the FDC3 DesktopAgent is injected, never imported."
+    }
+  ]
+}

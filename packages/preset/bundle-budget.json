@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/preset",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 12340,
+      "note": "Feature registry (31 entries) + deep merge + responsive profile + cost table + all seven presets. Measured 9491 B gz; budget is ~30% headroom. The barrel is the worst case on purpose — the sub-path exports (@onegrid/preset/mobile is 614 B gz) are how an app avoids paying it."
+    }
+  ]
+}

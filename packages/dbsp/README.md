@@ -44,6 +44,57 @@ pipeline.step({
 });
 ```
 
+## Derived views — `defineView`
+
+`defineView` is the public API over the operator algebra: it compiles
+`{ from, where, groupBy, agg }` into an operator chain and returns a live
+handle that satisfies `@onegrid/core`'s `RowSource` (`numRows` + `getCell`),
+so it can be handed straight to a `Grid`.
+
+```ts
+import { createTable, defineView } from '@onegrid/dbsp';
+
+const sale = createTable({ key: 'id' });
+sale.load([
+  { id: 1, region: 'EMEA', channel: 'web', amount: 10 },
+  { id: 2, region: 'AMER', channel: 'web', amount: 30 },
+]);
+
+const byRegion = defineView({
+  from: sale,
+  where: (r) => Number(r.amount) > 0,
+  groupBy: ['region'],
+  agg: [
+    { out: 'total', src: 'amount', kind: 'sum' },
+    { out: 'n', kind: 'count' },
+  ],
+});
+
+byRegion.subscribe((diff) => {
+  // Protocol `RowDiff[]` — the same envelope a live server change stream uses.
+  for (const d of diff) console.log(d.version, d.kind, d.pkey, d.fields);
+});
+
+// One row moves between groups: EMEA is debited, AMER credited, and the
+// operator chain sees exactly two Z-set entries — not the whole base table.
+sale.apply({ kind: 'update', pkey: 1, fields: { region: 'AMER' } });
+
+byRegion.numRows;                 // 1 — the emptied EMEA group is gone
+byRegion.getCell(0, 'total');     // 40
+byRegion.stat.rowInCount;         // bounded by the delta, not by numRows
+```
+
+A view is itself a `ViewSource`, so views compose and changes propagate
+transitively:
+
+```ts
+const big = defineView({ from: byRegion, where: (r) => Number(r.total) > 25 });
+```
+
+`view.stat` (`operatorCallCount` / `rowInCount` / `rowOutCount`) is live
+instrumentation: it makes the O(Δ) claim measurable rather than asserted, and
+the test suite pins it against a 10 000-row base with a one-row change.
+
 ## Property: incrementalization theorem
 
 For each operator `f` in §2 of the spec:

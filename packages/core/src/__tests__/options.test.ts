@@ -79,6 +79,17 @@ describe('defineGridOptions — flat form deprecation', () => {
 describe('Validation error codes', () => {
   beforeEach(() => __resetDeprecationWarningsForTests());
 
+  it('defaults omitted rowHeight to DEFAULT_ROW_HEIGHT', () => {
+    const flat = defineGridOptions({
+      host: fakeHost(),
+      data: {
+        rowSource: baseData.rowSource,
+        columns: baseData.columns,
+      },
+    });
+    expect(flat.rowHeight).toBe(32);
+  });
+
   it('OG_INVALID_OPTION when rowHeight is non-positive', () => {
     expect(() =>
       defineGridOptions({

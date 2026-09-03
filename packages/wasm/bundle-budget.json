@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/wasm",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 22528,
+      "note": "AccelBackend seam: JS reference backend, WASM raw-pointer binding + bump allocator, capability probe, differential harness, bench. Budget is ~30% above the measured gzipped size; the Rust crate is NOT part of this budget (it ships as a separately fetched .wasm)."
+    }
+  ]
+}

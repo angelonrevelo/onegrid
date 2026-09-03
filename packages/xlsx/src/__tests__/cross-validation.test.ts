@@ -15,6 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { createFormulaEngine, type CellResolver } from '@onegrid/formula';
+import '@onegrid/formula/excel-compat';
 import { readWorkbook, writeWorkbook, type Cell, type Workbook } from '../workbook';
 
 interface FormulaFixture {

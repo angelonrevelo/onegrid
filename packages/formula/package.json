@@ -12,6 +12,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./excel-compat": {
+      "types": "./dist/excel-compat.d.ts",
+      "import": "./dist/excel-compat.js",
+      "require": "./dist/excel-compat.cjs"
     }
   },
   "files": [

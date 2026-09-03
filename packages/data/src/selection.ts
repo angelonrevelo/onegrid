@@ -123,7 +123,7 @@ export class BitmapSelection {
   *iterate(): IterableIterator<number> {
     for (let i = 0; i < this.bytes.length; i++) {
       let byte = this.bytes[i] ?? 0;
-      let baseIdx = i << 3;
+      const baseIdx = i << 3;
       while (byte !== 0) {
         const lowBit = byte & -byte;
         const offset = lsbIndex(lowBit);

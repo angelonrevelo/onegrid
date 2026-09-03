@@ -1,0 +1,28 @@
+{
+  "name": "@onegrid/native",
+  "version": "1.0.0",
+  "description": "GPUI native-host protocol for oneGrid — viewport, cell quads and theme tokens as a versioned binary-friendly frame a Rust GPU UI window can consume. No GPUI dependency: the TypeScript encoder is the spec, the crate in crate/ matches it.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "publishConfig": { "access": "public" },
+  "sideEffects": false
+}

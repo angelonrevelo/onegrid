@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/snowflake",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 8192,
+      "note": "Gzipped SQL compiler + DataSource + STREAM CDC + type mapper. Measured 6181 B; budget is ~30% headroom. Zero runtime dependencies beyond @onegrid/protocol — no Snowflake driver ships with this."
+    }
+  ]
+}

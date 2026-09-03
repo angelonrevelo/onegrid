@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/elasticsearch",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 8500,
+      "note": "Gzipped. Query compiler + search_after keyset codec + composite/terms aggregation pushdown + mapping-to-Schema + watermark CDC. Measured 6529 B; budget is ~30% headroom. This is a server-side adapter, but it stays small because the ES client is injected rather than bundled."
+    }
+  ]
+}

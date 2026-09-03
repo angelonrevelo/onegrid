@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/validate",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 12700,
+      "note": "Engine (invalidation graph + topological plan + pass-capped cycle breaker + draft/commit staleness) plus the ten stock rules and their incremental aggregates. Measured 9772 bytes gzipped; budget is ~30% headroom. A new stock rule is a few hundred bytes — a rewrite of the engine is not."
+    }
+  ]
+}

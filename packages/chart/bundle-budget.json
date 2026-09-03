@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/chart",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 10420,
+      "note": "Derivation + scales + geometry + Canvas2D renderer + hit-testing + selection binding for 7 chart kinds. Measured 8015 B gz; budget is ~30% headroom. Zero runtime deps — a jump here means a dependency crept in."
+    }
+  ]
+}

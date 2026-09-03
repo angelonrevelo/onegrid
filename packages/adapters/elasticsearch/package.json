@@ -1,0 +1,36 @@
+{
+  "name": "@onegrid/elasticsearch",
+  "version": "1.0.0",
+  "description": "Elasticsearch 8.x adapter for oneGrid SSRM. Compiles BlockRequest into a real _search body with bool query, search_after keyset pagination (never from/size deep paging), composite/terms aggregation pushdown, first-class full-text operators, mapping-to-Schema translation, and a watermark-polling CDC adapter.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/protocol": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

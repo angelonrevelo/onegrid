@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/notebook",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 9000,
+      "note": "Document model + dependency graph + runner + formula kernel bridge + JSON codec. Measured 6.9 KB gzipped; budget is ~30% headroom. A kernel's own weight lands in the adopter's bundle, not here."
+    }
+  ]
+}

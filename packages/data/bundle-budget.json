@@ -3,7 +3,8 @@
   "entries": [
     {
       "file": "dist/index.js",
-      "bytes": 7680
+      "bytes": 12800,
+      "note": "Bumped from 7680 for groupPivot — recursive group × pivot composition with subtotal rollup, the hierarchical column header tree, and the flatten path."
     }
   ]
 }

@@ -1,0 +1,38 @@
+{
+  "name": "@onegrid/notebook",
+  "version": "1.0.0",
+  "description": "Reactive notebook document model for oneGrid — ordered cells whose outputs feed each other, wired by a name-based dependency graph with topological execution, incremental re-run of only the transitive dependents, eager staleness marking and cycle paths. The kernel is pluggable: the formula engine, DuckDB or a GPU pass all satisfy the same two-method interface.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/data": "workspace:*",
+    "@onegrid/formula": "workspace:*",
+    "@onegrid/protocol": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

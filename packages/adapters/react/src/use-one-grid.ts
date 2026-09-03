@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Grid } from '@onegrid/core';
+import { DEFAULT_ROW_HEIGHT, Grid } from '@onegrid/core';
 import type { ColumnDef, GridOptions } from '@onegrid/core';
 
 export type UseOneGridOptions = Omit<GridOptions, 'host'>;
@@ -150,7 +150,7 @@ export function useOneGrid(options: UseOneGridOptions): UseOneGridReturn {
 
   useEffect(() => {
     if (!grid) return;
-    grid.setRowSource(options.rowSource, options.rowHeight);
+    grid.setRowSource(options.rowSource, options.rowHeight ?? DEFAULT_ROW_HEIGHT);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grid, options.rowSource, options.rowHeight]);
 

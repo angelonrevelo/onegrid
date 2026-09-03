@@ -1,0 +1,40 @@
+{
+  "name": "@onegrid/chart",
+  "version": "1.0.0",
+  "description": "Range charts for oneGrid — select a rectangle of cells and get a live chart bound to that selection. Derives a typed dataset from a columnar table (category-axis inference, numeric series detection, null holes), then draws line / bar / stacked-bar / area / scatter / pie / donut straight to a Canvas2D context with nice-number axes, gridlines and a legend. No dependencies, no DOM required.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/core": "workspace:*",
+    "@onegrid/data": "workspace:*"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

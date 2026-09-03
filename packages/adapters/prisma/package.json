@@ -1,0 +1,37 @@
+{
+  "name": "@onegrid/prisma",
+  "version": "1.0.0",
+  "description": "Prisma adapter for oneGrid SSRM. Compiles BlockRequest into Prisma Client argument objects — where / orderBy / cursor+take+skip keyset pagination / select — pushes grouping down to groupBy with _sum/_avg/_min/_max/_count, introspects DMMF into a oneGrid Schema, and bridges live changes into @onegrid/orm-sync.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@onegrid/orm-sync": "workspace:*",
+    "@onegrid/protocol": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

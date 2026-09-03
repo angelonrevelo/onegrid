@@ -27,9 +27,14 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const STABILITY_TAGS = ['@public', '@beta', '@internal', '@deprecated'];
-const REPO_ROOT = resolve(new URL('.', import.meta.url).pathname, '..');
+// NOTE: `new URL(...).pathname` yields a leading-slash path on Windows
+// (`/C:/Users/...`), which every fs call then rejects — the walk found no
+// package and the script exited 0 having checked NOTHING. Use fileURLToPath,
+// which is the platform-correct conversion.
+const REPO_ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 const EXPORT_LINE_RE = /^export\s+(?:default\s+)?(?:async\s+)?(?:abstract\s+)?(?:type|interface|class|function|const|let|var|enum)\s+([A-Za-z_$][\w$]*)/;
 const REEXPORT_RE = /^export\s+(?:type\s+)?\{[^}]*\}\s*from\s+['"][^'"]+['"]/;

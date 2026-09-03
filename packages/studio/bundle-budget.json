@@ -1,0 +1,10 @@
+{
+  "name": "@onegrid/studio",
+  "entries": [
+    {
+      "file": "dist/index.js",
+      "bytes": 26200,
+      "note": "Catalog introspection queries + the 31-member DdlOperation compiler + DML + relationship graph + migration planner + SQL lexer. Measured at 20,173 B gzipped; budget is ~30% above. Most of the weight is the pg_catalog SQL text, which is irreducible — it is the feature."
+    }
+  ]
+}

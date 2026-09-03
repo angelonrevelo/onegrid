@@ -28,7 +28,8 @@ describe('groupRows', () => {
       },
     );
     expect(root.children).toHaveLength(3);
-    const totals = Object.fromEntries(root.children.map((c) => [c.path[0], c.aggregates.total]));
+    const totals: Record<string, unknown> = {};
+    for (const c of root.children) totals[String(c.path[0])] = c.aggregates.total;
     expect(totals).toEqual({ AMER: 500, APAC: 50, EMEA: 325 });
   });
 
