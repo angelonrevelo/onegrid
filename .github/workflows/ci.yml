@@ -41,6 +41,12 @@ jobs:
       - name: Roadmap evidence check
         run: pnpm roadmap:check
 
+      # Refuses a grid-landscape survey that is missing an entry, has invented
+      # one, left a placeholder, or cites no source. Both directions, because a
+      # count-only gate would pass 61 fabrications.
+      - name: Grid research coverage check
+        run: pnpm research:check
+
   bench:
     runs-on: ubuntu-latest
     needs: ci
