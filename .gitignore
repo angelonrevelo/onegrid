@@ -44,3 +44,10 @@ packages/adapters/*/temp/
 # Rust crate build output (packages/native/crate, packages/pgrx/crate).
 target/
 *.ppm
+
+# Playwright visual baselines are per-platform and machine-generated. The
+# committed set is chromium-darwin (what CI runs). A win32/linux run writes its
+# own baselines next to them, which are NOT review-verified and must never be
+# swept in by `git add -A`.
+apps/benchmarks/src/**/*-win32.png
+apps/benchmarks/src/**/*-linux.png

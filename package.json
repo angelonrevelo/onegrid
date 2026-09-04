@@ -22,6 +22,7 @@
     "bundle:check": "node scripts/check-bundle-budget.mjs",
     "surface:check": "node scripts/check-public-surface.mjs",
     "roadmap:check": "node scripts/check-roadmap-green.mjs",
+    "research:check": "node scripts/check-grid-research.mjs",
     "api:extract": "node scripts/generate-api-reports.mjs",
     "api:check": "node scripts/generate-api-reports.mjs --check",
     "fuzz": "ONEGRID_FUZZ_RUNS=2000 pnpm -r --filter @onegrid/formula --filter @onegrid/ssrm --filter @onegrid/postgres --filter @onegrid/duckdb-join test -- --testNamePattern fuzz",
