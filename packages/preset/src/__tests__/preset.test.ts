@@ -681,9 +681,14 @@ describe('estimateBundle', () => {
     // Asserted against BASELINE_PACKAGE rather than a literal: core's budget is
     // a real, moving number, and hardcoding it here means every honest budget
     // re-measurement lands as a spurious failure in an unrelated package.
-    expect(estimate.baselineByte).toBe(BASELINE_PACKAGE.gzipByte);
-    expect(estimate.totalByte).toBe(BASELINE_PACKAGE.gzipByte);
-    expect(estimate.totalKb).toBe(Math.round(BASELINE_PACKAGE.gzipByte / 1024));
+    // `gzipByte` is nullable for packages with no budget file; core always has
+    // one, so narrow explicitly rather than asserting a literal that goes stale
+    // every time the budget is honestly re-measured.
+    const baseline = BASELINE_PACKAGE.gzipByte;
+    expect(baseline).not.toBeNull();
+    expect(estimate.baselineByte).toBe(baseline);
+    expect(estimate.totalByte).toBe(baseline);
+    expect(estimate.totalKb).toBe(Math.round((baseline ?? 0) / 1024));
     expect(estimate.unmeasured).toEqual([]);
   });
 

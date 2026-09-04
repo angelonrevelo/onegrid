@@ -7,6 +7,30 @@ grouped by where they create leverage, not by release order — see
 
 **Last updated:** 2026-09-04
 
+## Current state
+
+The five feature matrices below (sections 1–5) are the governed surface —
+**130 of 130 rows are ✅**, and that is enforced mechanically, not asserted.
+`node scripts/check-roadmap-green.mjs` re-derives the ground truth on every
+run: a row may only be green if `docs/roadmap-evidence.json` binds it to a
+package that exists, a symbol actually exported from that package, and a test
+file actually on disk. It checks BOTH directions, so a row with no evidence
+and an evidence entry with no row both fail. Flipping an emoji in this file
+does not move the gate.
+
+What is deliberately NOT green, and why — these are tracked below and are not
+feature gaps:
+
+- **External work.** The third-party security audit is a commission, not a
+  commit.
+- **Scheduled mechanics.** The `@beta` → `@public` promotion lands at the v1.3
+  cut by policy, not by implementation.
+- **Environment-bound CI.** Real-GPU, real-device-mobile, screen-reader and
+  real-database CI need hardware or services this repo's CI does not have.
+  They are marked 🟡 rather than quietly dropped.
+- **v1.1.x carryovers.** R1C1 mode, iterative calc and long-period odd bonds
+  are documented deferrals with placeholders, not silent omissions.
+
 ## Status legend
 
 - ✅ **Shipped** — landed on `main`, has tests, exposed in the public API
@@ -887,7 +911,7 @@ import '@onegrid/formula/excel-compat';        // +460 functions
 import '@onegrid/formula/excel-compat/financial';  // just the finance subset
 ```
 
-### v1.2.0 — "interaction polish" (NEW — feature-parity track)  🟡 **Substantively complete — 9 of 11 items shipped across waves 24–26 (2026-06-02); pinned column resize + multi-row drag-reorder remain as small follow-ups.**
+### v1.2.0 — "interaction polish" (NEW — feature-parity track)  ✅ **Shipped — 11 of 11 items across waves 24–27; pinned column resize and multi-row drag-reorder closed in wave 27 (2026-09-04). 310/310 core tests.**
 
 Closes the most-visible UX gaps surfacing in adopter feedback. Each
 item is roughly half-a-session of work; the milestone is one batch.
@@ -909,13 +933,30 @@ item is roughly half-a-session of work; the milestone is one batch.
   110/110 core tests. Verified in real Chrome — pinned row 1 stayed at
   top after Ctrl+End scrolled to row 100,000.
 
-**Remaining gap (small).** Two v1.2 items that haven't shipped:
-- 🔵 **Pinned column resize** — currently frozen columns are
-  fixed-width. Same-shape problem as wave-24 column resize but on the
-  frozen band. ~30 min.
-- 🔵 **Multi-row drag-drop reorder** — wave 26 ships single-row drag.
-  Multi-row needs selection-aware drag (collect every selected row,
-  emit `onRowReorder` with an array). ~1 hr.
+**Wave 27 (2026-09-04) — the last two v1.2 items closed.** 310/310 core tests.
+
+- ✅ **Pinned column resize** — the entry above claimed frozen columns
+  were "currently fixed-width". That was stale, not true:
+  `columnAtRightBoundary` already had a frozen-band branch hit-testing
+  in absolute viewport coordinates, and `recomputeColumnWidths`
+  re-derives `frozenWidth` from live column widths on every
+  `setColumns`. Settled by driving real pointer events rather than by
+  reading the code —
+  `packages/core/src/__tests__/pinned-column-resize.test.ts` (6 tests)
+  now pins the behaviour that a naive implementation gets wrong:
+  resizing a frozen column must widen the frozen BAND, or the
+  scrolling band paints underneath it.
+- ✅ **Multi-row drag-drop reorder** — `onRowReorder` gained a third
+  argument, `movedRow: ReadonlyArray<number>`, carrying every row the
+  drag moved, ascending. Dragging a row inside the current selection
+  moves the whole selection; dragging one outside it moves only that
+  row and does not clear the selection (a drag is not a click). The
+  two leading arguments keep their wave-26 meaning, so existing
+  handlers are unaffected. Tests:
+  `packages/core/src/__tests__/multi-row-reorder.test.ts` (6 tests).
+  The tree/group-aware reorder model — parent-vs-sibling drops,
+  subtree-cycle refusal, ancestor de-duplication — lives behind
+  `@onegrid/core/reorder`.
 
 **Wave 24 (2026-06-02).** Six features in one wave, all wired through
 the showcase live tab + verified in real Chrome via chrome-devtools
@@ -1239,7 +1280,7 @@ ships when its specific dependency soaks.
 | --- | --- |
 | **v1.0.0 final** (audit + version bumps + JSDoc tags + API reports) | Stability milestone |
 | **v1.1.0** spreadsheet-grade compat (~460 Excel functions + dynamic arrays + OOXML) | Above |
-| **v1.2.0** interaction polish (drag-resize columns / rows, auto-size, cell flash, find/replace, keyboard nav, zero-config, keymap, selection backend, render hooks, grid-in-cell) | v1.2 section above |
+| ~~**v1.2.0** interaction polish~~ ✅ **shipped** (waves 24–27: drag-resize columns / rows incl. pinned, auto-size, cell flash, find/replace, keyboard nav, row drag-reorder incl. multi-row, mid-table pinning) | v1.2 section above |
 | **v1.3.0** tool panels (drag-to-group bar, pivot side panel, filter side panel, aggregation panel, status bar plugins, overlays) | v1.3 section |
 | **v1.4.0** charts + advanced clipboard (range chart, pivot chart, multi-rect clipboard, drag-fill patterns) | v1.4 section |
 | **v1.5.0** editing + export depth (calendar editor, multi-select editor, context-menu defaults, styled Excel export, PDF, screenshot, cell animations) | v1.5 section |

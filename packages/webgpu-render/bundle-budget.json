@@ -3,8 +3,8 @@
   "entries": [
     {
       "file": "dist/index.js",
-      "bytes": 3072,
-      "note": "Vertex buffer protocol + MSDF format + WGSL fragment snippet + render scaffold. The full canvas→WebGPU renderer migration lands in v0.1.0.x and will land separately under @onegrid/core/features/webgpu-render."
+      "bytes": 18000,
+      "note": "[budget-bump: webgpu-render] Raised from 3072 to match the measured 13.67 KB. The old budget and its note described the v0.1.0 SCAFFOLD (vertex-buffer protocol + MSDF format + a WGSL snippet) and predicted that the full renderer would 'land separately'. It did not land separately — it landed here: dynamic MSDF glyph atlas with shelf packing and LRU eviction, the instanced per-cell pipeline with ring-buffered staging, kerning-aware text layout, scissor damage, capability detection and device-lost recovery. The figure is the real cost of that renderer, not a regression. Opt-in package: an adopter pays this only by importing it; the Canvas-2D path in @onegrid/core stays authoritative."
     }
   ]
 }

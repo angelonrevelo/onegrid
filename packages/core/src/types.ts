@@ -363,10 +363,19 @@ export interface GridOptions {
   readonly rowDragColumnId?: string;
 
   /** Wave 26. Fires when a row drag-and-drop lands. Adopters apply the
-   *  reorder to their data store (the grid never owns row data). */
+   *  reorder to their data store (the grid never owns row data).
+   *
+   *  `movedRow` (v1.2 follow-up) carries EVERY row the drag moved, ascending.
+   *  Dragging a row that is part of the current selection moves the whole
+   *  selection; dragging an unselected row moves just that row, and
+   *  `movedRow` is then `[fromRow]`. The two leading arguments keep their
+   *  wave-26 meaning so existing handlers are unaffected — an adopter that
+   *  wants multi-row support reads the third argument, and one that does not
+   *  keeps working on the first row of the set. */
   readonly onRowReorder?: (
     fromRow: number,
     toRow: number,
+    movedRow: ReadonlyArray<number>,
   ) => void;
   /** Fires while the user drags a column-resize handle and again on
    *  drop. `finalCommit=false` during the drag (for UI feedback);

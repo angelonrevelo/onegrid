@@ -2,7 +2,7 @@
 
 > A free, open-source, framework-agnostic data grid built for 10M+ rows, multiple databases, formulas, instant updates, and modern ORM integrations. MIT-licensed end to end.
 
-**Status:** through v0.1.0 (on `main`) — engine + canvas renderer with column virtualization and adaptive overscan; SSRM with canonical keyset cursors / aggregation pushdown / real-time row-diff protocol / Arrow IPC ingestion; BigInt-safe formula engine; DuckDB-WASM mode with cross-source SQL joins; cell editing, row grouping, pivot tables, master-detail with nested grids, tree data with lazy-load; server-side hierarchical fetch; column drag-drop reorder, column tool panel, context menu, sticky group rows, range fill-handle, selection checkbox column; GPU compute kernels (reduce / filter / hash-aggregate) with CPU fallbacks; real database adapters (Postgres, MySQL, SQLite, ClickHouse, Mongo) with universal CDC + optimistic-mutation orchestration; schema introspection; framework + ORM adapter family; **plugin-kit + DTCG tokens + headless lifecycle + intl + touch + worker-plugins + bundle-budget CI** (v0.0.9); **DBSP operator algebra + data-worker offload + sparklines** (v0.0.10); **MCP server + time-travel + AI intents + live ORM sync + CRDT collab + Salsa reactivity substrate** (v0.0.11); **WebGPU render scaffold + MSDF text + cross-DB joins** (v0.1.0).
+**Status:** v1.2 shipped (on `main`) — the governed roadmap surface is **130 / 130 ✅**, enforced by `node scripts/check-roadmap-green.mjs`, which refuses a green row that is not backed by a real exported symbol and a real test file. Engine + canvas renderer with column virtualization and adaptive overscan; SSRM with canonical keyset cursors / aggregation pushdown / real-time row-diff protocol / Arrow IPC ingestion; BigInt-safe formula engine (457 Excel-compatible functions); DuckDB-WASM with cross-source SQL joins; cell editing, row grouping, pivot tables (including recursive group × pivot with correct non-decomposable rollup), master-detail with nested grids, tree data with lazy-load; merged cells, conditional formatting, multi-select chip cells, find/replace, undo/redo, Excel-class keyboard nav, pinned-column resize, multi-row drag-reorder; GPU compute kernels with CPU fallbacks and a full WebGPU render path; **nine** database adapters (Postgres, MySQL, SQLite, ClickHouse, Mongo, Snowflake, BigQuery, Elasticsearch, Prisma) with universal CDC + optimistic mutations; a Supabase-class headless table editor (`@onegrid/studio`); declarative row/column permissions; a WASM/Rust acceleration seam; and a feature-toggle preset system covering desktop, mobile, dashboard, report and database-editor profiles.
 
 ---
 
@@ -76,6 +76,25 @@ All under a single MIT license. No paywalled tiers. No commercial-only features.
 | [`@onegrid/reactive`](packages/reactive) | Salsa-style on-demand memoization substrate with backdating |
 | [`@onegrid/webgpu-render`](packages/webgpu-render) | WebGPU rendering scaffold — device + cell-quad pipeline + MSDF text shader |
 | [`@onegrid/duckdb-join`](packages/duckdb-join) | Cross-database SQL joins via DuckDB-WASM (rows / arrow / sql sources) |
+| [`@onegrid/studio`](packages/studio) | Headless Supabase-class table editor — introspection, DDL compilation, migration planning with risk assessment, FK relationship graph |
+| [`@onegrid/preset`](packages/preset) | Feature registry + toggleable presets (spreadsheet / database-editor / dashboard / report / mobile / minimal / analytics) + responsive profile |
+| [`@onegrid/query-builder`](packages/query-builder) | Headless visual query model → `FilterModel` / parameterised SQL (4 dialects) / Mongo |
+| [`@onegrid/permission`](packages/permission) | Declarative row-level security + column permissions; compiles into the adapter's `BlockRequest` filter |
+| [`@onegrid/validate`](packages/validate) | Cross-cell / row / sheet validators with incremental revalidation and cycle breaking |
+| [`@onegrid/chart`](packages/chart) | Range charts bound to a cell selection — 7 chart kinds, canvas renderer, hit-testing |
+| [`@onegrid/notebook`](packages/notebook) | Reactive notebook cells over grid data with a pluggable kernel |
+| [`@onegrid/print`](packages/print) | Paginated print + a dependency-free PDF writer + `@media print` CSS + screenshot stitching |
+| [`@onegrid/embed`](packages/embed) | Embeddable block — versioned descriptor, sandboxed iframe + postMessage, custom element, oEmbed |
+| [`@onegrid/observability`](packages/observability) | Typed error taxonomy, per-cell error boundary + circuit breaker, redaction-first logging, OTel-shaped spans |
+| [`@onegrid/fdc3`](packages/fdc3) | FDC3 2.0 desktop interop — broadcast row context, raise and receive intents |
+| [`@onegrid/wasm`](packages/wasm) | Rust/WASM acceleration seam with a JS reference backend, proven equivalent by differential property tests |
+| [`@onegrid/undo`](packages/undo) | Undo / redo stack semantics with transactional grouping |
+| [`@onegrid/xlsx`](packages/xlsx) | Reads and writes `.xlsx` end to end |
+| [`@onegrid/test`](packages/test) | Adopter test harness — canvas stub, a11y-shadow queries, fakes, user-event helpers, matchers |
+| [`@onegrid/snowflake`](packages/adapters/snowflake) | Snowflake adapter — SQL compiler + STREAM-based CDC |
+| [`@onegrid/bigquery`](packages/adapters/bigquery) | BigQuery adapter — GoogleSQL + partition pruning + polling CDC |
+| [`@onegrid/elasticsearch`](packages/adapters/elasticsearch) | Elasticsearch adapter — `search_after` keyset, composite aggregations, full-text operators |
+| [`@onegrid/prisma`](packages/adapters/prisma) | Prisma adapter — argument compilation, `groupBy` pushdown, DMMF introspection |
 
 ---
 

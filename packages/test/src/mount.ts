@@ -31,7 +31,7 @@
 //      the one place that can compute them correctly.
 // =============================================================================
 
-import { Grid } from '@onegrid/core';
+import { DEFAULT_ROW_HEIGHT, Grid } from '@onegrid/core';
 import type { GridOptions } from '@onegrid/core';
 import { installCanvasStub } from './canvas-stub';
 import type { CanvasStubHandle, CanvasStubOption } from './canvas-stub';
@@ -249,15 +249,21 @@ export function mountGrid(option: MountGridOption): GridTestHandle {
     fullHeaderHeight() +
     (option.pinnedTopRowSource ? option.pinnedTopRowSource.numRows * pinnedRowHeight : 0);
 
+  // `GridOptions.rowHeight` became optional when core gained
+  // DEFAULT_ROW_HEIGHT. The harness must resolve it the SAME way the Grid does,
+  // or its geometry silently disagrees with what was painted and every
+  // coordinate-based helper clicks the wrong cell.
+  const resolvedRowHeight = option.rowHeight ?? DEFAULT_ROW_HEIGHT;
+
   const rowHeight = (rowIndex: number): number =>
-    typeof option.rowHeight === 'number'
-      ? option.rowHeight
-      : (option.rowHeight[rowIndex] ?? 0);
+    typeof resolvedRowHeight === 'number'
+      ? resolvedRowHeight
+      : (resolvedRowHeight[rowIndex] ?? 0);
 
   const rowOffset = (rowIndex: number): number => {
-    if (typeof option.rowHeight === 'number') return rowIndex * option.rowHeight;
+    if (typeof resolvedRowHeight === 'number') return rowIndex * resolvedRowHeight;
     let acc = 0;
-    for (let i = 0; i < rowIndex; i++) acc += option.rowHeight[i] ?? 0;
+    for (let i = 0; i < rowIndex; i++) acc += resolvedRowHeight[i] ?? 0;
     return acc;
   };
 

@@ -32,6 +32,15 @@ jobs:
       - name: Bundle budget check
         run: pnpm bundle:check
 
+      - name: Public surface check
+        run: pnpm surface:check
+
+      # Refuses a ROADMAP row marked done that is not backed by a real exported
+      # symbol and a real test file, in both directions. Without this step the
+      # roadmap is a claim; with it, it is a gate.
+      - name: Roadmap evidence check
+        run: pnpm roadmap:check
+
   bench:
     runs-on: ubuntu-latest
     needs: ci

@@ -112,7 +112,7 @@ describe('detectCapability — simulated hosts', () => {
   });
 
   it('treats a validate returning a truthy non-boolean as failure', () => {
-    const host = { validate: (() => 1) as unknown as AccelHost['validate'] };
+    const host = { validate: (() => 1) as unknown as NonNullable<AccelHost['validate']> };
     expect(detectCapability(host).wasm).toBe(false);
   });
 });
@@ -189,7 +189,7 @@ describe('selectBackend', () => {
     expect(() =>
       selectBackend({
         host: {
-          get validate(): AccelHost['validate'] {
+          get validate(): NonNullable<AccelHost['validate']> {
             throw new Error('exploding getter');
           },
         },

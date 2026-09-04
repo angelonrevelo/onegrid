@@ -2,7 +2,7 @@
   "name": "onegrid-monorepo",
   "version": "0.0.0",
   "private": true,
-  "description": "oneGrid monorepo — framework-agnostic, columnar, MIT-licensed grid for 10M+ rows.",
+  "description": "oneGrid monorepo \u2014 framework-agnostic, columnar, MIT-licensed grid for 10M+ rows.",
   "license": "MIT",
   "packageManager": "pnpm@9.12.0",
   "engines": {
@@ -21,6 +21,7 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "bundle:check": "node scripts/check-bundle-budget.mjs",
     "surface:check": "node scripts/check-public-surface.mjs",
+    "roadmap:check": "node scripts/check-roadmap-green.mjs",
     "api:extract": "node scripts/generate-api-reports.mjs",
     "api:check": "node scripts/generate-api-reports.mjs --check",
     "fuzz": "ONEGRID_FUZZ_RUNS=2000 pnpm -r --filter @onegrid/formula --filter @onegrid/ssrm --filter @onegrid/postgres --filter @onegrid/duckdb-join test -- --testNamePattern fuzz",

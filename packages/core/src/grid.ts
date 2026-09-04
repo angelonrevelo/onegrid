@@ -320,7 +320,7 @@ export class Grid {
   // pixels.
   private readonly rowDragColumnId: string | undefined;
   private readonly onRowReorder:
-    | ((fromRow: number, toRow: number) => void)
+    | ((fromRow: number, toRow: number, movedRow: ReadonlyArray<number>) => void)
     | undefined;
   private rowDragCandidateRow: number | null = null;
   private rowDragCandidateClientY = 0;
@@ -1707,6 +1707,26 @@ export class Grid {
     return null;
   }
 
+  /**
+   * Which rows a row-drag should move.
+   *
+   * Dragging a row that is inside the current selection moves the WHOLE
+   * selection — the behaviour every file manager and spreadsheet has, and the
+   * thing that makes multi-row reorder discoverable without a modifier key.
+   * Dragging a row outside the selection moves only that row, and deliberately
+   * does NOT clear the selection: a drag is not a click.
+   *
+   * Returns ascending, de-duplicated row indices, always containing `from`.
+   */
+  private rowDragMovedRow(from: number): number[] {
+    const selected = new Set<number>();
+    for (const range of this.selection.normalizedRanges()) {
+      for (let row = range.rowStart; row <= range.rowEnd; row++) selected.add(row);
+    }
+    if (!selected.has(from)) return [from];
+    return [...selected].sort((a, b) => a - b);
+  }
+
   private handlePointerMove = (e: PointerEvent): void => {
     // Column resize tracking: update the column width per-frame as
     // the pointer moves; fire onColumnResize with finalCommit=false.
@@ -1910,8 +1930,12 @@ export class Grid {
       this.rowDragActiveRow = null;
       this.removeRowDragIndicator();
       const targetIndex = to > from ? to - 1 : to;
-      if (targetIndex !== from && this.onRowReorder) {
-        this.onRowReorder(from, targetIndex);
+      const movedRow = this.rowDragMovedRow(from);
+      // A multi-row drag is still a no-op when the block lands where it began,
+      // which for a set means: single row, unchanged index.
+      const unchanged = movedRow.length === 1 && targetIndex === from;
+      if (!unchanged && this.onRowReorder) {
+        this.onRowReorder(from, targetIndex, movedRow);
       }
       this.suppressSelectionUntilUp = false;
       try {
