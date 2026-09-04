@@ -11,14 +11,15 @@
 
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { selectMode, type PlaygroundMode } from './mode';
 import './types';
 
-const MODES = [
-  { label: 'In-memory', selector: 'button:has-text("In-memory")' },
-  { label: 'Formula', selector: 'button:has-text("Formula")' },
-  { label: 'Pivot', selector: 'button:has-text("Pivot")' },
-  { label: 'Tree', selector: 'button:has-text("Tree"):not(:has-text("SSRM"))' },
-] as const;
+const MODES: ReadonlyArray<{ label: string; value: PlaygroundMode }> = [
+  { label: 'In-memory', value: 'memory' },
+  { label: 'Formula', value: 'formula' },
+  { label: 'Pivot', value: 'pivot' },
+  { label: 'Tree', value: 'tree' },
+];
 
 for (const mode of MODES) {
   test(`axe-core: zero critical/serious violations in ${mode.label} mode`, async ({
@@ -26,7 +27,7 @@ for (const mode of MODES) {
   }) => {
     await page.goto('/');
     await page.waitForFunction(() => window.__onegrid !== undefined);
-    await page.locator(mode.selector).first().click();
+    await selectMode(page, mode.value);
     // Let the mode swap finish painting.
     await page.waitForTimeout(300);
 

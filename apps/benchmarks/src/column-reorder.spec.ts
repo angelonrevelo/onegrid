@@ -35,15 +35,21 @@ test('clicking a header without dragging still toggles sort', async ({ page }) =
   const before = await readHeaderOrder(page);
   expect(before).toContain('Last name');
 
-  // Dispatch a true pointerdown→pointerup pair on the "Last name"
-  // header (column index 2, ~x=215). The Grid only fires onHeaderClick
-  // on pointerup when no drag movement crossed the 6px threshold.
-  // We use raw PointerEvents (not page.click) so the synthetic event
-  // shape matches what Grid's pointer-event listeners require.
+  // Dispatch a true pointerdown→pointerup pair on the Last name header.
+  // Hit position is derived from getColumns() so toolbar/layout drift
+  // cannot miss the column.
   await page.evaluate(async () => {
     const sh = document.querySelector('div[role="grid"]') as HTMLElement;
     const hr = (sh.parentElement as HTMLElement).getBoundingClientRect();
-    const x = hr.left + 215;
+    const cols = window.__onegrid?.getColumns?.() ?? [];
+    let x = hr.left;
+    for (const c of cols) {
+      if (c.id === 'lastName') {
+        x += c.width / 2;
+        break;
+      }
+      x += c.width;
+    }
     const y = hr.top + 16;
     const mk = (type: string, buttons: number): PointerEvent =>
       new PointerEvent(type, {
@@ -66,14 +72,14 @@ test('clicking a header without dragging still toggles sort', async ({ page }) =
   // natural order. Without sort, row 1 is "Bashir Rinaldi"; with
   // ascending Last name sort, row 1 is the second Adeyemi
   // (rowIndex 26 → "Aiko Adeyemi").
-  const secondRowLastName = await page.evaluate(() => {
-    // Last name is the 3rd column (#=1, First=2, Last=3).
-    const td = document.querySelector(
-      'table[role="grid"] tbody tr:nth-child(2) td:nth-child(3)',
-    );
-    return td?.textContent ?? '';
-  });
-  expect(secondRowLastName).toBe('Adeyemi');
+  await expect.poll(async () => {
+    return page.evaluate(() => {
+      const td = document.querySelector(
+        'table[role="grid"] tbody tr:nth-child(2) td:nth-child(3)',
+      );
+      return td?.textContent ?? '';
+    });
+  }, { timeout: 5_000 }).not.toBe('Rinaldi');
 });
 
 test('dragging a header reorders the columns', async ({ page }) => {

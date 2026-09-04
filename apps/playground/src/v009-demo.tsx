@@ -103,6 +103,28 @@ function inProcessWorkerPair(): {
 
 const SAMPLE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
+// Catalogs must be registered before the first render. `t()` reads a
+// module-level map and does not subscribe to later `loadCatalog` calls,
+// so putting this in useEffect left the title as the raw message id.
+loadCatalog({
+  locale: 'en',
+  messages: {
+    'demo.title': 'v0.0.9 Demo',
+    'demo.gestureHint': 'Tap, double-tap, or long-press the box',
+    'demo.itemCount':
+      '{count, plural, =0 {no items} one {# item} other {# items}}',
+  },
+});
+loadCatalog({
+  locale: 'es',
+  messages: {
+    'demo.title': 'Demostración v0.0.9',
+    'demo.gestureHint': 'Toca, doble toca o mantén pulsado el cuadro',
+    'demo.itemCount':
+      '{count, plural, =0 {sin elementos} one {# elemento} other {# elementos}}',
+  },
+});
+
 export function V009Demo(): JSX.Element {
   const [themeName, setThemeName] = useState<'light' | 'dark'>('light');
   const [densityName, setDensityName] = useState<'compact' | 'comfortable' | 'spacious'>('comfortable');
@@ -135,29 +157,6 @@ export function V009Demo(): JSX.Element {
       ].join('\n'),
     [themeBundle, themeName, densityDtcg, densityName],
   );
-
-  // -- i18n: load both catalogs once, switch via locale state --
-  useEffect(() => {
-    loadCatalog({
-      locale: 'en',
-      messages: {
-        'demo.title': 'v0.0.9 Demo',
-        'demo.gestureHint': 'Tap, double-tap, or long-press the box',
-        'demo.itemCount':
-          '{count, plural, =0 {no items} one {# item} other {# items}}',
-      },
-    });
-    loadCatalog({
-      locale: 'es',
-      messages: {
-        'demo.title': 'Demostración v0.0.9',
-        'demo.gestureHint':
-          'Toca, doble toca o mantén pulsado el cuadro',
-        'demo.itemCount':
-          '{count, plural, =0 {sin elementos} one {# elemento} other {# elementos}}',
-      },
-    });
-  }, []);
 
   // -- plugin-kit: build a PluginState that registers theme + catalog --
   const pluginState = useMemo(() => {

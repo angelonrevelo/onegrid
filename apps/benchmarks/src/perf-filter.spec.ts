@@ -8,6 +8,7 @@
 // =============================================================================
 
 import { expect, test } from '@playwright/test';
+import { selectMode } from './mode';
 import './types';
 
 test.beforeEach(async ({ page }) => {
@@ -18,7 +19,7 @@ test.beforeEach(async ({ page }) => {
 test('SSRM · 1M rows · quick filter completes within 1.5s and narrows row count', async ({
   page,
 }) => {
-  await page.click('button:has-text("SSRM")');
+  await selectMode(page, 'ssrm');
   await expect(page.locator('text=1,000,000 rows')).toBeVisible({ timeout: 10_000 });
   await page.waitForTimeout(400);
 
@@ -56,7 +57,7 @@ test('SSRM · 1M rows · quick filter completes within 1.5s and narrows row coun
 });
 
 test('SSRM · clearing filter restores 1M rows', async ({ page }) => {
-  await page.click('button:has-text("SSRM")');
+  await selectMode(page, 'ssrm');
   await expect(page.locator('text=1,000,000 rows')).toBeVisible({ timeout: 10_000 });
 
   // Apply, then clear.
@@ -71,7 +72,7 @@ test('SSRM · clearing filter restores 1M rows', async ({ page }) => {
 });
 
 test('SSRM · combined sort+filter completes within 2s', async ({ page }) => {
-  await page.click('button:has-text("SSRM")');
+  await selectMode(page, 'ssrm');
   await expect(page.locator('text=1,000,000 rows')).toBeVisible({ timeout: 10_000 });
   await page.waitForTimeout(400);
 

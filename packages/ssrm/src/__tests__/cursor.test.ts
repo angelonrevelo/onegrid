@@ -26,6 +26,14 @@ describe('encodeKeysetCursor / decodeKeysetCursor', () => {
     expect(decoded.rowId).toBe(cursor.rowId);
   });
 
+  it('canonicalizes -0 sort values because JSON cannot round-trip them', () => {
+    const decoded = decodeKeysetCursor(
+      encodeKeysetCursor({ sortValues: [-0], rowId: 'x' }),
+    );
+    expect(Object.is(decoded.sortValues[0], 0)).toBe(true);
+    expect(Object.is(decoded.sortValues[0], -0)).toBe(false);
+  });
+
   it('round-trips numeric rowId', () => {
     const cursor: KeysetCursor = {
       sortValues: [123.45, 'x'],

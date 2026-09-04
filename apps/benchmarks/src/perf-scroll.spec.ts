@@ -13,6 +13,7 @@
 // =============================================================================
 
 import { expect, test } from '@playwright/test';
+import { selectMode } from './mode';
 import './types';
 
 const SCROLL_DURATION_MS = 4_000;
@@ -27,14 +28,22 @@ async function flingScroll(
   pxPerFrame: number,
   durationMs: number,
 ): Promise<void> {
-  const startedAt = Date.now();
-  // Use programmatic scrollBy so we don't depend on wheel-event timing.
-  while (Date.now() - startedAt < durationMs) {
-    await page.evaluate((dy: number) => {
-      window.__onegrid?.scrollBy(dy);
-    }, pxPerFrame);
-    await page.waitForTimeout(16);
-  }
+  // Drive scroll from inside the page on rAF. A Playwright evaluate+timeout
+  // loop measures IPC round-trips (~30 Hz on this host), not grid FPS.
+  await page.evaluate(
+    async ({ px, duration }) => {
+      const start = performance.now();
+      await new Promise<void>((resolve) => {
+        const step = (): void => {
+          window.__onegrid?.scrollBy(px);
+          if (performance.now() - start < duration) requestAnimationFrame(step);
+          else resolve();
+        };
+        requestAnimationFrame(step);
+      });
+    },
+    { px: pxPerFrame, duration: durationMs },
+  );
 }
 
 test('memory · 1M rows · 1× scroll fling holds ≥ 50 FPS p50', async ({ page }) => {
@@ -81,7 +90,7 @@ test('memory · 1M rows · 5× scroll fling holds ≥ 30 FPS p50', async ({ page
 test('SSRM · 1M rows · scroll triggers block fetches with no jank above 50ms', async ({
   page,
 }) => {
-  await page.click('button:has-text("SSRM")');
+  await selectMode(page, 'ssrm');
   await expect(page.locator('text=1,000,000 rows')).toBeVisible({ timeout: 10_000 });
   await page.evaluate(() => {
     window.__onegrid?.reset();

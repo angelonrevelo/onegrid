@@ -40,14 +40,16 @@ test('row checkboxes mount one per visible row', async ({ page }) => {
 });
 
 test('toggling row checkboxes updates the SelectAll label', async ({ page }) => {
-  // Wait for checkboxes.
+  // Firefox/WebKit pool checkboxes slower than Chromium — wait until
+  // at least three row boxes exist before clicking indices.
   await page.waitForFunction(
     () =>
       document.querySelectorAll(
         'input[type="checkbox"][aria-label^="Select row"]',
-      ).length > 0,
+      ).length >= 5,
+    { timeout: 10_000 },
   );
-  // Toggle three rows.
+  // Toggle three rows (0, 2, 4).
   await page.evaluate(() => {
     const cbs = document.querySelectorAll(
       'input[type="checkbox"][aria-label^="Select row"]',

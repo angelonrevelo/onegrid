@@ -13,12 +13,13 @@
 // =============================================================================
 
 import { expect, test } from '@playwright/test';
+import { selectMode } from './mode';
 import './types';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => window.__onegrid !== undefined);
-  await page.getByRole('button', { name: 'SSRM Tree', exact: true }).click();
+  await selectMode(page, 'ssrm-tree');
 });
 
 test('ssrm-tree mode mounts with 3 collapsed roots fetched from the server', async ({

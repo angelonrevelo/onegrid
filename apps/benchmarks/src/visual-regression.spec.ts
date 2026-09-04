@@ -18,9 +18,12 @@
 import { expect, test } from '@playwright/test';
 import './types';
 
-// Snapshots are chromium-only baselines (rendering differs cross-browser).
-// Skip this file entirely for firefox / webkit.
-test.skip(({ browserName }) => browserName !== 'chromium', 'visual regression — chromium baselines only');
+// Snapshots are chromium-darwin baselines (rendering differs cross-browser
+// and cross-OS). Skip elsewhere rather than inventing a Windows baseline.
+test.skip(
+  ({ browserName }) => browserName !== 'chromium' || process.platform !== 'darwin',
+  'visual regression — chromium-darwin baselines only',
+);
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');

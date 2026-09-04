@@ -7,6 +7,7 @@
 // =============================================================================
 
 import { expect, test } from '@playwright/test';
+import { selectMode } from './mode';
 import './types';
 
 test.beforeEach(async ({ page }) => {
@@ -36,7 +37,7 @@ test('in-memory mode renders rows on first paint', async ({ page }) => {
 test('switching to SSRM connects and shows the row count from the server', async ({
   page,
 }) => {
-  await page.click('button:has-text("SSRM")');
+  await selectMode(page, 'ssrm');
 
   // Toolbar reports the row count delivered by the mock server's probe block.
   await expect(page.locator('text=1,000,000 rows')).toBeVisible({ timeout: 10_000 });
@@ -57,7 +58,7 @@ test('switching to SSRM connects and shows the row count from the server', async
 });
 
 test('scrolling SSRM grid triggers new block fetches (cache grows)', async ({ page }) => {
-  await page.click('button:has-text("SSRM")');
+  await selectMode(page, 'ssrm');
   await expect(page.locator('text=1,000,000 rows')).toBeVisible({ timeout: 10_000 });
 
   // Initial render fetches block 0 → cache 1 block
@@ -91,9 +92,15 @@ test('Cmd/Ctrl+A then Cmd/Ctrl+C selects all rows without errors', async ({
   // The scroll host (role=grid) overlays the canvas — that's the actual
   // focus target, not the canvas. Clicking it focuses keyboard input.
   await expect(page.locator('text=visible')).toBeVisible();
-  // Two role="grid" elements exist: the scroll host div (focus target) and
-  // the hidden ARIA shadow <table>. We want the visible div.
-  await page.locator('div[role="grid"]').click();
+  // Overlay/canvas children intercept a normal click on the scroll host.
+  // Focus the mounted host so Cmd/Ctrl+A reaches the grid.
+  await page.evaluate(() => {
+    window.__onegrid?.host?.focus();
+  });
+  const focused = await page.evaluate(() => document.activeElement?.id ?? '');
+  if (!focused) {
+    await page.locator('div[role="grid"]').first().click({ force: true });
+  }
 
   // Track JS errors during the keyboard interaction.
   const errors: string[] = [];

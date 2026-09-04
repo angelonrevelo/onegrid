@@ -14,10 +14,11 @@
 // =============================================================================
 
 import { expect, test } from '@playwright/test';
+import { openDemo } from './mode';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
-  await page.getByTestId('v100-demo-toggle').click();
+  await openDemo(page, 'v100-demo-toggle');
   await expect(page.getByTestId('v100-demo')).toBeVisible();
 });
 

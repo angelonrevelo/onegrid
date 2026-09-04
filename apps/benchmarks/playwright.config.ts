@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PLAYGROUND_URL = 'http://localhost:5173';
+// IPv6: on this box 127.0.0.1:5173 is booted; the playground binds [::1]:5173.
+const PLAYGROUND_URL = 'http://[::1]:5173';
 const SSRM_URL = 'http://localhost:3001';
 
 // Spec subsets per browser. Perf and webgpu specs aren't meaningful or

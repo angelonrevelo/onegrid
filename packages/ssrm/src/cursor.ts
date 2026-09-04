@@ -41,8 +41,17 @@ const LEGACY_OFFSET_PREFIX = 'offset:';
  * `prevCursor` on every block response; clients only ever round-trip
  * them back on the next `BlockRequest.cursor`.
  */
+/** JSON cannot distinguish -0 from +0; canonicalize so encode/decode round-trips. */
+function canonicalizeSortValue(value: unknown): unknown {
+  if (typeof value === 'number' && Object.is(value, -0)) return 0;
+  return value;
+}
+
 export function encodeKeysetCursor(cursor: KeysetCursor): string {
-  const payload = JSON.stringify({ s: cursor.sortValues, r: cursor.rowId });
+  const payload = JSON.stringify({
+    s: cursor.sortValues.map(canonicalizeSortValue),
+    r: cursor.rowId,
+  });
   const b64 =
     typeof globalThis.btoa === 'function'
       ? globalThis.btoa(payload)

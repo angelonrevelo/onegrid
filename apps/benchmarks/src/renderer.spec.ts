@@ -63,14 +63,13 @@ test('pool size is bounded by viewport, not dataset size', async ({ page }) => {
 test('React-rendered status pills mount via @onegrid/react adapter', async ({ page }) => {
   // The status column overrides the synthetic dataset with a React
   // component renderer; assert the rendered <span data-testid="status-pill">
-  // shows up and the pool stays bounded.
+  // shows up and the pool stays bounded. WebKit's concurrent React
+  // scheduler is slower than Chromium — poll instead of a fixed wait.
   await page.evaluate(() => {
     window.__onegrid?.scrollBy(0);
   });
-  await page.waitForTimeout(150);
   const pills = page.locator('[data-testid="status-pill"]');
-  const count = await pills.count();
-  expect(count).toBeGreaterThan(0);
+  await expect.poll(async () => pills.count(), { timeout: 10_000 }).toBeGreaterThan(0);
   const firstText = await pills.first().textContent();
   expect(['active', 'pending', 'archived', 'pilot', 'churned']).toContain(firstText);
 });
@@ -84,9 +83,11 @@ test('React fiber survives scroll-in/scroll-out (pool reuse, not remount)', asyn
   await page.evaluate(() => {
     window.__onegrid?.scrollBy(0);
   });
-  await page.waitForTimeout(80);
-  const initialCount = await page.locator('[data-testid="status-pill"]').count();
-  expect(initialCount).toBeGreaterThan(0);
+  await expect
+    .poll(async () => page.locator('[data-testid="status-pill"]').count(), {
+      timeout: 10_000,
+    })
+    .toBeGreaterThan(0);
 
   // Scroll deep, then back to the top.
   await page.evaluate(() => {

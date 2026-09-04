@@ -26,6 +26,7 @@
 // =============================================================================
 
 import { createRoot, type Root } from 'react-dom/client';
+import { flushSync } from 'react-dom';
 import { createElement, type ComponentType } from 'react';
 import type { CellRenderContext, CellRenderer } from '@onegrid/core';
 
@@ -66,7 +67,12 @@ export function createReactCellRenderer<P extends CellRenderContext = CellRender
       el.style.cssText = 'width:100%;height:100%;box-sizing:border-box;';
 
       const root = createRoot(el);
-      root.render(createElement(component, ctx as P));
+      // createRoot.render is concurrent; the overlay positions this
+      // element in the same frame. flushSync so WebKit (and any slow
+      // scheduler) paints the cell before mount() returns.
+      flushSync(() => {
+        root.render(createElement(component, ctx as P));
+      });
       PER_INSTANCE.set(el, {
         root,
         lastValue: ctx.value,
@@ -89,7 +95,9 @@ export function createReactCellRenderer<P extends CellRenderContext = CellRender
       inst.lastValue = ctx.value;
       inst.lastRow = ctx.rowIndex;
       inst.lastCol = ctx.columnId;
-      inst.root.render(createElement(component, ctx as P));
+      flushSync(() => {
+        inst.root.render(createElement(component, ctx as P));
+      });
     },
     reset() {
       // Recycle back to the pool. We deliberately do NOT unmount here;

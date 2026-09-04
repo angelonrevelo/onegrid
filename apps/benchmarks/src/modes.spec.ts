@@ -11,6 +11,7 @@
 // =============================================================================
 
 import { expect, test } from '@playwright/test';
+import { selectMode } from './mode';
 import './types';
 
 test.beforeEach(async ({ page }) => {
@@ -19,14 +20,14 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('default mode is in-memory and renders cells', async ({ page }) => {
-  await expect(page.getByRole('button', { name: 'In-memory' })).toBeVisible();
+  await expect(page.getByLabel('data source mode')).toHaveValue('memory');
   await expect(page.locator('[role="gridcell"]').first()).toBeVisible();
   // Status bar is the canonical "memory mode is alive" tell.
   await expect(page.getByText(/^no selection$|^count /)).toBeVisible();
 });
 
 test('switching to Formula renders the spreadsheet-style grid', async ({ page }) => {
-  await page.getByRole('button', { name: 'Formula', exact: true }).click();
+  await selectMode(page, 'formula');
   // Formula mode shows the formula bar with a cell address.
   await expect(page.getByPlaceholder(/Type a value or =FORMULA/)).toBeVisible();
   // The 20-row × 7-column dataset must populate.
@@ -35,7 +36,7 @@ test('switching to Formula renders the spreadsheet-style grid', async ({ page })
 });
 
 test('switching to DuckDB connects to WASM and renders 100k rows', async ({ page }) => {
-  await page.getByRole('button', { name: 'DuckDB (in-browser)' }).click();
+  await selectMode(page, 'duckdb');
   // The DuckDB cold-start takes a few seconds (CDN bundle fetch +
   // WASM init + CSV ingest). Wait for the row count text.
   await expect(page.getByText(/100,000 rows · cache/)).toBeVisible({ timeout: 30_000 });
@@ -45,7 +46,7 @@ test('switching to DuckDB connects to WASM and renders 100k rows', async ({ page
 test('switching to Pivot rebuilds the dataset and renders pivoted columns', async ({
   page,
 }) => {
-  await page.getByRole('button', { name: 'Pivot' }).click();
+  await selectMode(page, 'pivot');
   // Pivot output: 5 status rows × 26 firstName pivot keys × 2 measures
   // = 1 row-group col + 52 measure cols → aria-colcount ≈ 53.
   const grid = page.locator('[role="grid"]').first();
@@ -63,9 +64,9 @@ test('switching to Pivot rebuilds the dataset and renders pivoted columns', asyn
 test('returning to In-memory after another mode rehydrates the dataset', async ({
   page,
 }) => {
-  await page.getByRole('button', { name: 'Formula', exact: true }).click();
+  await selectMode(page, 'formula');
   await expect(page.getByPlaceholder(/Type a value or =FORMULA/)).toBeVisible();
-  await page.getByRole('button', { name: 'In-memory' }).click();
+  await selectMode(page, 'memory');
   await expect(page.getByText(/1,000,000 rows/)).toBeVisible({ timeout: 5_000 });
   await expect(page.locator('[role="gridcell"]').first()).toBeVisible();
 });

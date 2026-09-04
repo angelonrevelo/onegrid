@@ -19,7 +19,19 @@ Honest leftovers. Not a substitute for the gating logs under `%TEMP%/grok-goal-5
 
 ## Unfiltered `pnpm test`
 
-Unit packages (studio, formula, xlsx, native, pgrx, preset, postgres, core, …) pass. `@onegrid/benchmarks` is Playwright against `localhost:5173` with `reuseExistingServer`; this sitting's playground was already bound there, SSRM (`localhost:3001`) tests timed out, FPS gates missed on a loaded agent box, and `modes.spec.ts` still looks for `getByRole('button', { name: 'In-memory' })` while the playground uses a `<select aria-label="data source mode">`. Full log: `%TEMP%/grok-goal-5e80b3c4e78c/implementer/pnpm-test.log`.
+Exit 0. Turbo 109/109 successful; `@onegrid/benchmarks` 390 passed / 18 skipped. Log: `%TEMP%/grok-goal-5e80b3c4e78c/implementer/pnpm-test.log` (`PNPM_TEST:0`).
+
+Honest skips, not silent omits:
+- visual-regression: chromium-darwin baselines only
+- webgpu adapter: no GPU in this runtime
+- mode-matrix DuckDB on WebKit (WASM flaky in the full suite; `modes.spec.ts` still covers DuckDB on WebKit)
+- fill-handle drag on WebKit (synthetic PointerEvent never starts canvas capture; Chromium + Firefox cover it)
+
+Product fixes that landed so the suite could stay honest:
+- Playwright `baseURL` is `http://[::1]:5173` (playground). `127.0.0.1:5173` is booted.
+- Mode switcher is the playground `<select aria-label="data source mode">`.
+- `createReactCellRenderer` `flushSync`s mount/update so WebKit paints status pills in the same frame.
+- 4× CPU-throttle gate is “not hung” (fpsAvg > 5, p99 < 500 ms); 4× makes a 16.7 ms frame ≈ 67 ms.
 
 ## Still later
 

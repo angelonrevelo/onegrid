@@ -10,6 +10,7 @@
 // =============================================================================
 
 import { expect, test } from '@playwright/test';
+import { selectMode } from './mode';
 import './types';
 
 test.beforeEach(async ({ page }) => {
@@ -18,7 +19,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('SSRM · 1M rows · sort by string column completes within 2s', async ({ page }) => {
-  await page.click('button:has-text("SSRM")');
+  await selectMode(page, 'ssrm');
   await expect(page.locator('text=1,000,000 rows')).toBeVisible({ timeout: 10_000 });
   // Let the initial block fetch complete so our timing is for sort only.
   await page.waitForTimeout(400);
@@ -52,7 +53,7 @@ test('SSRM · 1M rows · sort by string column completes within 2s', async ({ pa
 test('SSRM · 1M rows · multi-column sort produces correct first-page ordering', async ({
   page,
 }) => {
-  await page.click('button:has-text("SSRM")');
+  await selectMode(page, 'ssrm');
   await expect(page.locator('text=1,000,000 rows')).toBeVisible({ timeout: 10_000 });
   await page.waitForTimeout(400);
 
@@ -72,16 +73,17 @@ test('SSRM · 1M rows · multi-column sort produces correct first-page ordering'
   // First visible row should belong to the "active" status (alphabetically
   // first among the 5 statuses we generate) with the highest revenue in
   // that group. Pull that text from the accessibility shadow table.
-  const firstRowText = await page
-    .locator('table[role="grid"] tbody tr')
-    .first()
-    .textContent();
-
-  expect(firstRowText).toContain('active');
+  await expect.poll(async () => {
+    const firstRowText = await page
+      .locator('table[role="grid"] tbody tr')
+      .first()
+      .textContent();
+    return firstRowText ?? '';
+  }, { timeout: 8_000 }).toMatch(/active/i);
 });
 
 test('SSRM · sort change drops cached blocks (fingerprint invalidation)', async ({ page }) => {
-  await page.click('button:has-text("SSRM")');
+  await selectMode(page, 'ssrm');
   await expect(page.locator('text=1,000,000 rows')).toBeVisible({ timeout: 10_000 });
 
   // Build up some cache with the default unsorted view.

@@ -15,11 +15,11 @@
 // =============================================================================
 
 import { expect, test } from '@playwright/test';
+import { openDemo } from './mode';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
-  // Open the demo panel.
-  await page.getByTestId('v009-demo-toggle').click();
+  await openDemo(page, 'v009-demo-toggle');
   await expect(page.getByTestId('v009-demo')).toBeVisible();
 });
 
