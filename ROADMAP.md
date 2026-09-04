@@ -1141,6 +1141,33 @@ Today only the column tool panel exists.
 - **Real-database CI** — ephemeral Postgres / MySQL / Mongo containers
   in CI for every adapter; current tests are unit-level over a mock.
 
+### v1.7.0 — "migration path"  🔵 **Scoped, not built — [docs/compat-ag-scope.md](./docs/compat-ag-scope.md)**
+
+The largest remaining obstacle to adoption is not a missing feature — the
+governed matrix is 130/130 — it is that an AG Grid application cannot move
+without a hand rewrite of every `gridApi.*` call and every event handler.
+Measured: AG Grid documents ~180–200 API methods and ~85–90 events;
+`@onegrid/migrate` today ports column definitions only.
+
+- 🔵 **`@onegrid/compat-ag`** — a tiered compatibility shim. Tier A
+  (~32 methods, ~18 events) behavioural equivalence; Tier B four families
+  with divergences asserted in tests; Tier C refused with a named
+  `OG_COMPAT_UNSUPPORTED` error rather than a silent no-op. The shim OWNS a
+  row store — that is the one architectural concession, and it caps a
+  shimmed grid at the client-side row model by design, so adopters who
+  want SSRM or a database adapter must graduate off it.
+- 🔵 **Conformance corpus** — ~12 realistic AG-Grid-shaped fixtures mounted
+  through the shim via `@onegrid/test`. This is what proves the tier split
+  was drawn in the right place.
+- 🔵 **Migration guide** — including the thing that will actually surprise
+  people: oneGrid paints to canvas, so an adopter's DOM-selector tests do
+  not port.
+
+Precedent: `akonga`'s vendored M-Grid shipped an AG-Grid-named
+`ModuleRegistry` that threw `"Module Not Implemented Error"` for
+unimplemented modules, specifically so call sites kept compiling during an
+engine swap — and that swap completed. Estimated 5–6 sessions.
+
 ### Operational / ecosystem track (parallel to milestones)
 
 These are gates the **codebase doesn't ship** — they live in CI, infra,
