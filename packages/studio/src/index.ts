@@ -219,5 +219,7 @@ export type { StudioSession } from './apply';
 export { createMemoryQueryable } from './memory';
 export type { MemoryQueryable } from './memory';
 
+export { seedStudioDemo } from './seed';
+
 export { measureQuery } from './bench';
 export type { QueryBenchResult } from './bench';

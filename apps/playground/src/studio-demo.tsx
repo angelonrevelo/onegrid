@@ -15,6 +15,7 @@ import {
   listRow,
   measureQuery,
   resolveRelationship,
+  seedStudioDemo,
   type DatabaseSchema,
   type DdlOperation,
   type ForeignKeyAction,
@@ -57,54 +58,6 @@ function queryableFromLocation(): PostgresQueryable {
   return createMemoryQueryable();
 }
 
-async function seed(session: ReturnType<typeof createStudioSession>): Promise<void> {
-  await session.applyDdl({
-    kind: 'createTable',
-    schema: 'public',
-    table: 'account',
-    column: [
-      { name: 'account_id', type: 'uuid', isNullable: false, isPrimaryKey: true },
-      { name: 'email', type: 'text', isNullable: false },
-      { name: 'display_name', type: 'text', isNullable: true },
-    ],
-  });
-  await session.applyDdl({
-    kind: 'createTable',
-    schema: 'public',
-    table: 'order_line',
-    column: [
-      { name: 'order_line_id', type: 'bigint', isNullable: false, isPrimaryKey: true },
-      { name: 'account_id', type: 'uuid', isNullable: false },
-      { name: 'total_amount', type: 'numeric', isNullable: false },
-    ],
-  });
-  await session.applyDdl({
-    kind: 'addForeignKey',
-    schema: 'public',
-    table: 'order_line',
-    name: 'order_line_account_id_fkey',
-    column: ['account_id'],
-    referencedSchema: 'public',
-    referencedTable: 'account',
-    referencedColumn: ['account_id'],
-    onDelete: 'cascade',
-  });
-  const schema = await session.introspect();
-  const account = findTable(schema, { schema: 'public', name: 'account' });
-  if (account) {
-    await session.insert(account, {
-      account_id: 'a-1',
-      email: 'ada@onegrid.dev',
-      display_name: 'Ada',
-    });
-    await session.insert(account, {
-      account_id: 'a-2',
-      email: 'grace@onegrid.dev',
-      display_name: 'Grace',
-    });
-  }
-}
-
 export function StudioDemo(): JSX.Element {
   const session = useMemo(() => createStudioSession(queryableFromLocation()), []);
   const [schema, setSchema] = useState<DatabaseSchema | null>(null);
@@ -142,10 +95,14 @@ export function StudioDemo(): JSX.Element {
   }, [activeTable, session]);
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
-      await seed(session);
-      await refresh();
+      await seedStudioDemo(session);
+      if (!cancelled) await refresh();
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [refresh, session]);
 
   const runDdl = useCallback(

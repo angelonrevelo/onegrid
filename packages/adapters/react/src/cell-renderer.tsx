@@ -55,6 +55,14 @@ const PER_INSTANCE = new WeakMap<HTMLElement, PerInstance>();
  * the usual React reconciliation path; React itself diffs and only
  * commits actual DOM changes.
  */
+function paint(root: Root, element: ReturnType<typeof createElement>): void {
+  queueMicrotask(() => {
+    flushSync(() => {
+      root.render(element);
+    });
+  });
+}
+
 export function createReactCellRenderer<P extends CellRenderContext = CellRenderContext>(
   options: CreateReactCellRendererOptions<P>,
 ): CellRenderer {
@@ -67,12 +75,11 @@ export function createReactCellRenderer<P extends CellRenderContext = CellRender
       el.style.cssText = 'width:100%;height:100%;box-sizing:border-box;';
 
       const root = createRoot(el);
-      // createRoot.render is concurrent; the overlay positions this
-      // element in the same frame. flushSync so WebKit (and any slow
-      // scheduler) paints the cell before mount() returns.
-      flushSync(() => {
-        root.render(createElement(component, ctx as P));
-      });
+      // createRoot.render is concurrent; WebKit needs a sync commit so
+      // the overlay isn't empty. Defer flushSync to a microtask so we
+      // never call it inside a React layout effect (playground Grid
+      // paints from useLayoutEffect and flushSync would warn).
+      paint(root, createElement(component, ctx as P));
       PER_INSTANCE.set(el, {
         root,
         lastValue: ctx.value,
@@ -95,9 +102,7 @@ export function createReactCellRenderer<P extends CellRenderContext = CellRender
       inst.lastValue = ctx.value;
       inst.lastRow = ctx.rowIndex;
       inst.lastCol = ctx.columnId;
-      flushSync(() => {
-        inst.root.render(createElement(component, ctx as P));
-      });
+      paint(inst.root, createElement(component, ctx as P));
     },
     reset() {
       // Recycle back to the pool. We deliberately do NOT unmount here;

@@ -5,6 +5,7 @@ Honest leftovers. Not a substitute for the gating logs under `%TEMP%/grok-goal-5
 ## Closed this sitting
 
 - Studio compile-and-apply through a queryable (`createStudioSession` + `createMemoryQueryable`). Tests: `packages/studio/src/__tests__/apply-live.test.ts`.
+- `seedStudioDemo` is idempotent: two (or concurrent) calls on one queryable yield 2 unique account rows, not 4. Playground StrictMode useEffect calls the shipped helper. Playwright: `studio-verify.json` bench `3 row` (`a-1`, `a-2`, `new-account_id`).
 - Playground Studio surface: in-grid edit, add field, PK, FK + ON DELETE, insert/delete row, create table, feature toggles, query bench. Playwright: `studio.png` + `studio-verify.json`.
 - `createHttpQueryable` consumed from booted (`web/server/onegrid-queryable.mjs` → `createBootedQueryable`) and from a studio consumer test.
 - Native host PPM surface (`onegrid-native-host`, 18477 bytes). GPUI is an optional `--features gpui` binary.
@@ -30,7 +31,7 @@ Honest skips, not silent omits:
 Product fixes that landed so the suite could stay honest:
 - Playwright `baseURL` is `http://[::1]:5173` (playground). `127.0.0.1:5173` is booted.
 - Mode switcher is the playground `<select aria-label="data source mode">`.
-- `createReactCellRenderer` `flushSync`s mount/update so WebKit paints status pills in the same frame.
+- `createReactCellRenderer` commits via `queueMicrotask` + `flushSync` so WebKit paints pills without calling `flushSync` inside a React layout effect.
 - 4× CPU-throttle gate is “not hung” (fpsAvg > 5, p99 < 500 ms); 4× makes a 16.7 ms frame ≈ 67 ms.
 
 ## Still later

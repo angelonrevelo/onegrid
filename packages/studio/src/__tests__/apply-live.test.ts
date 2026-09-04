@@ -7,10 +7,12 @@ import {
   applyList,
   applyUpdate,
   createMemoryQueryable,
+  createStudioSession,
   findTable,
   introspectDatabase,
   listRow,
   measureQuery,
+  seedStudioDemo,
 } from '../index';
 
 describe('compile-and-apply through a memory queryable', () => {
@@ -140,5 +142,37 @@ describe('measureQuery', () => {
     expect(Number.isFinite(second.durationMs)).toBe(true);
     expect(second.durationMs).toBeGreaterThanOrEqual(0);
     expect(second.rowCount).toBe(3);
+  });
+});
+
+describe('seedStudioDemo', () => {
+  async function accountId(queryable: ReturnType<typeof createMemoryQueryable>) {
+    const session = createStudioSession(queryable);
+    const schema = await session.introspect();
+    const account = findTable(schema, { schema: 'public', name: 'account' });
+    expect(account).not.toBeNull();
+    const row = await applyList(queryable, account!);
+    return row.map((r) => String(r.account_id ?? '')).sort();
+  }
+
+  it('invoking twice on one queryable yields 2 unique account rows, not 4', async () => {
+    const queryable = createMemoryQueryable();
+    const session = createStudioSession(queryable);
+    await seedStudioDemo(session);
+    await seedStudioDemo(session);
+    const id = await accountId(queryable);
+    expect(id).toHaveLength(2);
+    expect(id).toEqual(['a-1', 'a-2']);
+    expect(new Set(id).size).toBe(2);
+  });
+
+  it('concurrent invocations on one queryable still yield 2 unique account rows', async () => {
+    const queryable = createMemoryQueryable();
+    const session = createStudioSession(queryable);
+    await Promise.all([seedStudioDemo(session), seedStudioDemo(session)]);
+    const id = await accountId(queryable);
+    expect(id).toHaveLength(2);
+    expect(id).toEqual(['a-1', 'a-2']);
+    expect(new Set(id).size).toBe(2);
   });
 });
