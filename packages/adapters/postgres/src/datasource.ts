@@ -15,11 +15,14 @@ import type {
   BlockRequest,
   BlockResponse,
   DataSource,
+  DistinctRequest,
+  DistinctResult,
   Schema,
   SortField,
 } from '@onegrid/protocol';
 import {
   compileBlockQuery,
+  compileDistinctQuery,
   decodeKeysetCursor,
   encodeKeysetCursor,
   isKeysetCursor,
@@ -78,6 +81,22 @@ export function createPgDataSource(opts: PgDataSourceOptions): DataSource {
         nextCursor,
         prevCursor,
         ...(totalRowCount !== undefined ? { totalRowCount } : {}),
+      };
+    },
+    async fetchDistinct(req: DistinctRequest): Promise<DistinctResult> {
+      const { sql, params } = compileDistinctQuery(req, table);
+      const result = await client.query(sql, params);
+      const limit = Math.max(0, Math.floor(req.limit));
+      const rows = result.rows;
+      return {
+        kind: 'distinct',
+        entry: rows.slice(0, limit).map((row) => ({
+          value: row['value'] ?? null,
+          // node-postgres returns int4 as number but some drivers stringify.
+          count: Number(row['count']),
+        })),
+        truncated: rows.length > limit,
+        ...(req.requestId !== undefined ? { requestId: req.requestId } : {}),
       };
     },
   };

@@ -8,6 +8,8 @@ import { AggregationModel } from '@onegrid/protocol';
 import { BlockRequest } from '@onegrid/protocol';
 import { BlockResponse } from '@onegrid/protocol';
 import { DataSource } from '@onegrid/protocol';
+import { DistinctRequest } from '@onegrid/protocol';
+import { DistinctResult } from '@onegrid/protocol';
 import { FetchOptions } from '@onegrid/protocol';
 import { FilterModel } from '@onegrid/protocol';
 import { GroupingModel } from '@onegrid/protocol';
@@ -45,6 +47,7 @@ export class BlockCache {
     inflightSet(key: string, promise: Promise<BlockResponse>): void;
     static keyFor(req: BlockRequest): string;
     retainFingerprint(fingerprint: string): number;
+    retainRecentFingerprint(fingerprint: string, keep: number): number;
     // (undocumented)
     set(key: string, value: BlockResponse, fingerprint: string): void;
     // (undocumented)
@@ -102,8 +105,11 @@ export function cursorFromRow(row: Record<string, unknown>, sort: SortModel, row
 // @public
 export function decodeKeysetCursor(cursor: string): KeysetCursor;
 
-// @public
+// @public (undocumented)
 export function encodeKeysetCursor(cursor: KeysetCursor): string;
+
+// @public (undocumented)
+export function excludeColumnFilter(filter: FilterModel, columnId: string): FilterModel;
 
 // @public (undocumented)
 export function fingerprintQuery(sort: SortModel, filter: FilterModel, grouping?: GroupingModel, pivot?: PivotModel, parentId?: string | null, aggregations?: AggregationModel): string;
@@ -188,6 +194,7 @@ export interface RowSource {
 export interface SsrmCacheOptions {
     readonly maxBlocks?: number;
     readonly prefetchAhead?: number;
+    readonly retainQueryCount?: number;
 }
 
 // @public (undocumented)
@@ -200,8 +207,17 @@ export interface SsrmDataSourceHandle extends DataSource {
     readonly invalidate: () => void;
 }
 
+// @public
+export interface SsrmDistinctOption {
+    readonly limit?: number;
+    readonly search?: string;
+    // (undocumented)
+    readonly signal?: AbortSignal;
+}
+
 // @public (undocumented)
 export interface SsrmRowSourceHandle extends RowSource {
+    readonly fetchDistinct: (columnId: string, option?: SsrmDistinctOption) => Promise<DistinctResult>;
     readonly getCacheSize: () => number;
     readonly invalidateAll: () => void;
     readonly invalidateBlock: (blockIndex: number) => void;
@@ -213,6 +229,7 @@ export interface SsrmRowSourceHandle extends RowSource {
 // @public (undocumented)
 export interface SsrmRowSourceOptions {
     readonly blockSize?: number;
+    readonly debounceMs?: number;
     readonly decodeArrowIpc?: ArrowDecoder;
     readonly initialFilter?: FilterModel;
     readonly initialSort?: SortModel;
@@ -224,6 +241,7 @@ export interface SsrmRowSourceOptions {
 // @public
 export interface SsrmTransport {
     readonly close?: () => void;
+    readonly distinct?: (req: DistinctRequest, opts?: FetchOptions) => Promise<DistinctResult>;
     readonly mutate?: (mutations: ReadonlyArray<Mutation>, opts?: FetchOptions) => Promise<MutationResult>;
     readonly request: (req: BlockRequest, opts?: FetchOptions) => Promise<BlockResponse>;
     readonly schema: () => Promise<Schema> | Schema;

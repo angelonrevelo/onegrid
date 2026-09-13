@@ -7,6 +7,7 @@
 import { AsyncDuckDB } from '@duckdb/duckdb-wasm';
 import { BlockRequest } from '@onegrid/protocol';
 import { DataSource } from '@onegrid/protocol';
+import { DistinctRequest } from '@onegrid/protocol';
 import { Schema } from '@onegrid/protocol';
 
 // @public
@@ -24,6 +25,16 @@ export interface BuildBlockSqlOptions {
 
 // @public
 export function buildCountSql(options: Pick<BuildBlockSqlOptions, 'source' | 'request'>): SqlPart;
+
+// @public
+export function buildDistinctSql(options: BuildDistinctSqlOptions): SqlPart;
+
+// @public (undocumented)
+export interface BuildDistinctSqlOptions {
+    // (undocumented)
+    readonly request: DistinctRequest;
+    readonly source: string;
+}
 
 // @public
 export function buildSchemaSql(source: string): string;

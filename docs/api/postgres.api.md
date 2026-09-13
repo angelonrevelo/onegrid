@@ -6,6 +6,7 @@
 
 import { BlockRequest } from '@onegrid/protocol';
 import { DataSource } from '@onegrid/protocol';
+import { DistinctRequest } from '@onegrid/protocol';
 import { KeysetCursor } from '@onegrid/protocol';
 import { ResyncRequest } from '@onegrid/protocol';
 import { ResyncResponse } from '@onegrid/protocol';
@@ -16,6 +17,9 @@ import { Unsubscribe } from '@onegrid/protocol';
 // @public
 export function compileBlockQuery(req: BlockRequest, table: PgTableDescriptor, cursor: KeysetCursor | null): CompiledQuery;
 
+// @public
+export function compileDistinctQuery(req: DistinctRequest, table: PgTableDescriptor): CompiledQuery;
+
 // @public (undocumented)
 export interface CompiledQuery {
     // (undocumented)
@@ -23,6 +27,9 @@ export interface CompiledQuery {
     // (undocumented)
     readonly sql: string;
 }
+
+// @public
+export function createHttpQueryable(option: HttpQueryableOption): PgQueryable;
 
 // @public (undocumented)
 export function createPgCdcAdapter(opts: PgCdcAdapterOptions): PgCdcAdapter;
@@ -35,6 +42,13 @@ export function decodeKeysetCursor(cursor: string): KeysetCursor;
 
 // @public (undocumented)
 export function encodeKeysetCursor(cursor: KeysetCursor): string;
+
+// @public
+export interface HttpQueryableOption {
+    readonly fetch?: typeof fetch;
+    readonly header?: Readonly<Record<string, string>>;
+    readonly url: string;
+}
 
 // @public (undocumented)
 export function isKeysetCursor(cursor: string): boolean;

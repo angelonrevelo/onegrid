@@ -359,7 +359,57 @@ export interface DataSource {
     mutations: ReadonlyArray<Mutation>,
     opts?: FetchOptions,
   ) => Promise<MutationResult>;
+  /**
+   * Optional distinct values + counts for one column — what a set-filter
+   * popover lists. Adapters that cannot answer leave this undefined or
+   * resolve `{ kind: 'unsupported' }`.
+   */
+  readonly fetchDistinct?: (req: DistinctRequest, opts?: FetchOptions) => Promise<DistinctResult>;
 }
+
+// -----------------------------------------------------------------------------
+// Distinct values (set-filter lists)
+// -----------------------------------------------------------------------------
+
+/** @public */
+export interface DistinctRequest {
+  readonly columnId: string;
+  /**
+   * Filter applied before counting. A set-filter UI passes the active filter
+   * WITHOUT the column's own set rule, so unticked values stay listed.
+   */
+  readonly filter: FilterModel;
+  /** Case-insensitive prefix on the value's string form. */
+  readonly search?: string;
+  /** Maximum distinct values to return. */
+  readonly limit: number;
+  readonly requestId?: string;
+}
+
+/** @public */
+export interface DistinctEntry {
+  readonly value: unknown;
+  readonly count: number;
+}
+
+/** @public */
+export interface DistinctResponse {
+  readonly kind: 'distinct';
+  /** Ordered by count descending, then value ascending. */
+  readonly entry: ReadonlyArray<DistinctEntry>;
+  /** True when more distinct values matched than `limit` allowed. */
+  readonly truncated: boolean;
+  readonly requestId?: string;
+}
+
+/** @public */
+export interface DistinctUnsupported {
+  readonly kind: 'unsupported';
+  readonly reason: string;
+}
+
+/** @public */
+export type DistinctResult = DistinctResponse | DistinctUnsupported;
 
 // -----------------------------------------------------------------------------
 // Mutations

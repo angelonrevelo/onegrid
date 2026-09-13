@@ -25,6 +25,7 @@ import type {
   AggregationModel,
   BlockRequest,
   ComparisonOperator,
+  DistinctRequest,
   FilterNode,
   KeysetCursor,
   SortField,
@@ -64,6 +65,34 @@ export function compileBlockQuery(
     return compileGroupedQuery(req, table);
   }
   return compileFlatQuery(req, table, cursor);
+}
+
+/**
+ * Compile a DistinctRequest into a GROUP BY + COUNT(*) over one column,
+ * ordered by count descending. It asks for `limit + 1` rows: the extra row
+ * only exists to tell the caller the list was truncated.
+ */
+export function compileDistinctQuery(
+  req: DistinctRequest,
+  table: PgTableDescriptor,
+): CompiledQuery {
+  requireColumn(req.columnId, table);
+  const col = quoteIdent(req.columnId);
+  const params: unknown[] = [];
+  const whereClauses: string[] = [];
+  if (req.filter) {
+    whereClauses.push(compileFilter(req.filter, params, table));
+  }
+  if (req.search) {
+    params.push(`${escapeLike(req.search)}%`);
+    whereClauses.push(`LOWER(CAST(${col} AS TEXT)) LIKE LOWER($${String(params.length)})`);
+  }
+  const where = whereClauses.length > 0 ? ` WHERE ${whereClauses.join(' AND ')}` : '';
+  params.push(Math.max(0, Math.floor(req.limit)) + 1);
+  const sql =
+    `SELECT ${col} AS "value", COUNT(*)::int AS "count" FROM ${quoteIdent(table.table)}${where}` +
+    ` GROUP BY ${col} ORDER BY "count" DESC, ${col} ASC NULLS LAST LIMIT $${String(params.length)}`;
+  return { sql, params };
 }
 
 function compileFlatQuery(

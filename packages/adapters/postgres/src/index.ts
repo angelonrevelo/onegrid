@@ -29,6 +29,7 @@ export type {
 
 export {
   compileBlockQuery,
+  compileDistinctQuery,
   encodeKeysetCursor,
   decodeKeysetCursor,
   isKeysetCursor,

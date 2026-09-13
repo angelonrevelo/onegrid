@@ -88,7 +88,7 @@ describe('createSsrmDataSource', () => {
     expect(a).toBe(b);
   });
 
-  it('drops cached blocks when sort fingerprint changes', async () => {
+  it('keeps the previous query\'s blocks when the sort fingerprint changes (default retainQueryCount 2)', async () => {
     const t = makeTransport();
     const ds = createSsrmDataSource(t, { maxBlocks: 10 });
 
@@ -100,9 +100,21 @@ describe('createSsrmDataSource', () => {
       sort: [{ columnId: 'name', direction: 'asc' }],
     };
     await ds.fetchBlock(sortedReq);
-    // Old fingerprint's entries are evicted by retainFingerprint.
-    expect(ds.getCacheStats().size).toBe(1);
+    expect(ds.getCacheStats().size).toBe(2);
     expect(ds.getCacheStats().fingerprint).not.toBeNull();
+  });
+
+  it('drops cached blocks when sort fingerprint changes with retainQueryCount 1', async () => {
+    const t = makeTransport();
+    const ds = createSsrmDataSource(t, { maxBlocks: 10, retainQueryCount: 1 });
+
+    await ds.fetchBlock(baseReq);
+    const sortedReq: BlockRequest = {
+      ...baseReq,
+      sort: [{ columnId: 'name', direction: 'asc' }],
+    };
+    await ds.fetchBlock(sortedReq);
+    expect(ds.getCacheStats().size).toBe(1);
   });
 
   it('omits subscribe and mutate when transport does not support them', () => {

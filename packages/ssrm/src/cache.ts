@@ -34,6 +34,8 @@ export class BlockCache {
   private readonly maxBlocks: number;
   private readonly entries = new Map<string, Entry>();
   private readonly inflight = new Map<string, Promise<BlockResponse>>();
+  /** Fingerprints of the most recently active queries, most recent first. */
+  private readonly recentFingerprint: string[] = [];
 
   constructor(options: BlockCacheOptions) {
     if (options.maxBlocks <= 0) {
@@ -113,9 +115,32 @@ export class BlockCache {
     return removed;
   }
 
+  /**
+   * Mark `fingerprint` as the active query and keep the blocks of the `keep`
+   * most recently active queries, dropping the rest. Unlike
+   * `retainFingerprint`, toggling back to a recent sort or filter is then a
+   * cache hit rather than a refetch. Returns the number of evicted entries.
+   */
+  retainRecentFingerprint(fingerprint: string, keep: number): number {
+    const at = this.recentFingerprint.indexOf(fingerprint);
+    if (at >= 0) this.recentFingerprint.splice(at, 1);
+    this.recentFingerprint.unshift(fingerprint);
+    this.recentFingerprint.length = Math.min(this.recentFingerprint.length, Math.max(1, keep));
+    const live = new Set(this.recentFingerprint);
+    let removed = 0;
+    for (const [key, entry] of this.entries) {
+      if (!live.has(entry.fingerprint)) {
+        this.entries.delete(key);
+        removed++;
+      }
+    }
+    return removed;
+  }
+
   clear(): void {
     this.entries.clear();
     this.inflight.clear();
+    this.recentFingerprint.length = 0;
   }
 
   get size(): number {
