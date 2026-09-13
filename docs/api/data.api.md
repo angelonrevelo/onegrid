@@ -43,7 +43,25 @@ export class BitmapSelection {
 }
 
 // @public (undocumented)
+export function buildColumnIndex(table: ColumnTable, columnId: string): ColumnIndex;
+
+// @public (undocumented)
 export type ColumnData = ReadonlyArray<unknown> | Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array | Uint32Array | Float32Array | Float64Array | BigInt64Array | BigUint64Array;
+
+// @public (undocumented)
+export interface ColumnIndex {
+    readonly code: Int32Array;
+    // (undocumented)
+    readonly columnId: string;
+    // (undocumented)
+    readonly nullCount: number;
+    readonly nullRank: number;
+    // (undocumented)
+    readonly numRows: number;
+    readonly offset: Int32Array;
+    readonly row: Int32Array;
+    readonly value: ReadonlyArray<unknown>;
+}
 
 // @public (undocumented)
 export interface ColumnInput {
@@ -84,6 +102,9 @@ export function countTreeNodes<T>(roots: ReadonlyArray<TreeNode<T>>): number;
 export function createColumnTable(columns: ReadonlyArray<ColumnInput>): ColumnTable;
 
 // @public (undocumented)
+export function createTableIndex(table: ColumnTable): TableIndex;
+
+// @public (undocumented)
 export interface DistinctValue {
     // (undocumented)
     readonly count: number;
@@ -99,6 +120,15 @@ export function enumerateDistinctChunked(table: ColumnTable, columnId: string, o
     readonly batchSize?: number;
     readonly onProgress?: (partial: DistinctValue[], rowsScanned: number) => void;
 }): Promise<DistinctValue[]>;
+
+// @public
+export function enumerateDistinctIndexed(tableIndex: TableIndex, columnId: string, options?: EnumerateDistinctIndexedOptions): DistinctValue[];
+
+// @public (undocumented)
+export interface EnumerateDistinctIndexedOptions {
+    readonly limit?: number | null;
+    readonly selection?: BitmapSelection;
+}
 
 // @public (undocumented)
 export interface EnumerateDistinctOptions {
@@ -120,6 +150,9 @@ export class FenwickHeights {
 
 // @public (undocumented)
 export function filterIndex(table: ColumnTable, filter: FilterModel, options?: FilterOptions): BitmapSelection;
+
+// @public (undocumented)
+export function filterIndexed(tableIndex: TableIndex, filter: FilterModel, options?: FilterOptions): BitmapSelection;
 
 // @public (undocumented)
 export interface FilterOptions {
@@ -152,6 +185,9 @@ export interface FlatLeafRow {
     readonly rowIndex: number;
 }
 
+// @public
+export function flattenGroupPivot(result: GroupPivotResult, openId: ReadonlySet<string>): FlatTreeEntry<GroupPivotRow>[];
+
 // @public (undocumented)
 export function flattenGroupTree(root: GroupNode, openPaths: ReadonlySet<string>): FlatGroupEntry[];
 
@@ -183,6 +219,54 @@ export interface GroupNode {
 }
 
 // @public (undocumented)
+export function groupPivot(input: GroupPivotInput): GroupPivotResult;
+
+// @public (undocumented)
+export interface GroupPivotInput {
+    readonly groupBy: ReadonlyArray<string>;
+    readonly measure: ReadonlyArray<Aggregation>;
+    // (undocumented)
+    readonly option?: GroupPivotOption;
+    readonly pivotBy: ReadonlyArray<string>;
+    // (undocumented)
+    readonly table: ColumnTable;
+}
+
+// @public (undocumented)
+export interface GroupPivotOption {
+    readonly grandTotal?: boolean;
+    readonly grandTotalLabel?: string;
+    readonly nonDecomposableRollup?: NonDecomposableRollup;
+    readonly rowFilter?: (rowIndex: number) => boolean;
+}
+
+// @public (undocumented)
+export interface GroupPivotResult {
+    readonly columnTree: ReadonlyArray<PivotColumnNode>;
+    readonly groupColumn: ReadonlyArray<string>;
+    readonly pivotColumn: ReadonlyArray<PivotColumnLeaf>;
+    readonly row: ReadonlyArray<GroupPivotRow>;
+    readonly table: ColumnTable;
+    readonly tree: ReadonlyArray<TreeNode<GroupPivotRow>>;
+    readonly unavailableColumn: ReadonlyArray<string>;
+}
+
+// @public
+export interface GroupPivotRow {
+    readonly columnId: string;
+    readonly depth: number;
+    readonly id: string;
+    readonly isLeafLevel: boolean;
+    readonly key: unknown;
+    // (undocumented)
+    readonly kind: 'group' | 'grandTotal';
+    // (undocumented)
+    readonly path: ReadonlyArray<unknown>;
+    readonly rowCount: number;
+    readonly rowIndex: number;
+}
+
+// @public (undocumented)
 export function groupRows(table: ColumnTable, grouping: GroupingModel, options?: GroupRowsOptions): GroupNode;
 
 // @public (undocumented)
@@ -191,11 +275,39 @@ export interface GroupRowsOptions {
     readonly rowFilter?: (rowIndex: number) => boolean;
 }
 
+// @public
+export type NonDecomposableRollup = 'recompute' | 'unavailable';
+
 // @public (undocumented)
 export function pathKey(path: ReadonlyArray<unknown>): string;
 
 // @public (undocumented)
 export function pivot(table: ColumnTable, model: PivotModel): PivotedTable;
+
+// @public
+export interface PivotColumnLeaf {
+    readonly decomposable: boolean;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly measure: Aggregation;
+    readonly pivotPath: ReadonlyArray<unknown>;
+}
+
+// @public
+export interface PivotColumnNode {
+    // (undocumented)
+    readonly child: ReadonlyArray<PivotColumnNode>;
+    readonly columnId: string;
+    // (undocumented)
+    readonly depth: number;
+    readonly key: unknown;
+    readonly leafCount: number;
+    readonly leafId: string | null;
+    readonly measure: Aggregation | null;
+    // (undocumented)
+    readonly path: ReadonlyArray<unknown>;
+}
 
 // @public (undocumented)
 export interface PivotedTable {
@@ -217,6 +329,14 @@ export function sortIndex(table: ColumnTable, sort: SortModel, options?: SortOpt
 // @public (undocumented)
 export interface SortOptions {
     readonly locale?: string;
+}
+
+// @public (undocumented)
+export interface TableIndex {
+    readonly column: (columnId: string) => ColumnIndex;
+    readonly invalidate: () => void;
+    // (undocumented)
+    readonly table: ColumnTable;
 }
 
 // @public (undocumented)
