@@ -691,6 +691,9 @@ importers:
       '@onegrid/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@onegrid/wasm':
+        specifier: workspace:*
+        version: link:../wasm
       '@onegrid/worker-plugins':
         specifier: workspace:*
         version: link:../worker-plugins

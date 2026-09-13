@@ -4,23 +4,90 @@
 
 ```ts
 
+import { AccelBackend } from '@onegrid/wasm';
+import { AccelHost } from '@onegrid/wasm';
+import { AccelModule } from '@onegrid/wasm';
+import { Aggregation } from '@onegrid/protocol';
+import { BitmapSelection } from '@onegrid/data';
 import { ColumnTable } from '@onegrid/data';
 import { FilterModel } from '@onegrid/protocol';
 import { FilterOptions } from '@onegrid/data';
 import { GroupingModel } from '@onegrid/protocol';
 import { GroupNode } from '@onegrid/data';
 import { GroupRowsOptions } from '@onegrid/data';
+import * as _onegrid_data from '@onegrid/data';
 import { PivotModel } from '@onegrid/protocol';
 import { SortModel } from '@onegrid/protocol';
 import { SortOptions } from '@onegrid/data';
 import { WorkerLike } from '@onegrid/worker-plugins';
 
+// @public
+export function accelAggregate(backend: AccelBackend, table: ColumnTable, aggregation: Aggregation, rowIndex?: ReadonlyArray<number> | Int32Array | null): unknown;
+
+// @public
+export function accelFilterIndex(backend: AccelBackend, table: ColumnTable, filter: FilterModel, options?: FilterOptions): BitmapSelection;
+
+// @public
+export function accelGroupRows(backend: AccelBackend, table: ColumnTable, grouping: GroupingModel, options?: GroupRowsOptions): GroupNode;
+
+// @public
+export function accelSortIndex(backend: AccelBackend, table: ColumnTable, sort: SortModel, options?: SortOptions): Int32Array;
+
+// @public
+export interface AccelStatus {
+    // (undocumented)
+    readonly backend: string;
+    // (undocumented)
+    readonly reason: string;
+}
+
+// @public (undocumented)
+export interface AggregateInput {
+    // (undocumented)
+    readonly aggregation: Aggregation;
+    // (undocumented)
+    readonly rowIndex?: ReadonlyArray<number> | Int32Array | null;
+    // (undocumented)
+    readonly table: ColumnTable;
+}
+
+// @public
+export function computeViewportLayout(column: ReadonlyArray<ViewportColumnSpec>, capacityRow: number): ViewportLayout;
+
+// @public (undocumented)
+export interface ConfigureAccelInput {
+    readonly byte: ArrayBuffer | Uint8Array;
+}
+
 // @public (undocumented)
 export function createDataWorker(opts: DataWorkerOptions): DataWorker;
 
 // @public (undocumented)
+export function createDataWorkerHandler(option?: DataWorkerHandlerOption): {
+    sort: (input: SortInput) => Int32Array;
+    filter: (input: FilterInput) => _onegrid_data.BitmapSelection;
+    group: (input: GroupInput) => _onegrid_data.GroupNode;
+    pivot: (input: PivotInput) => _onegrid_data.PivotedTable;
+    aggregate: (input: AggregateInput) => unknown;
+    configureAccel: (input: ConfigureAccelInput) => Promise<AccelStatus>;
+    accelStatus: () => AccelStatus;
+};
+
+// @public
+export function createViewportPublisher(option: ViewportPublisherOptions): ViewportPublisher;
+
+// @public
+export function createViewportSubscriber(option: ViewportSubscriberOptions): ViewportSubscriber;
+
+// @public (undocumented)
+export function createWorkerPool(option?: WorkerPoolOptions): WorkerPool;
+
+// @public (undocumented)
 export class DataWorker {
     constructor(opts: DataWorkerOptions);
+    accelStatus(): Promise<AccelStatus>;
+    aggregate(table: ColumnTable, aggregation: Aggregation, rowIndex?: ReadonlyArray<number> | Int32Array | null): Promise<unknown>;
+    configureAccel(byte: ArrayBuffer | Uint8Array): Promise<AccelStatus>;
     // (undocumented)
     dispose(): void;
     filter(table: ColumnTable, filter: FilterModel, options?: FilterOptions): Promise<unknown>;
@@ -31,10 +98,324 @@ export class DataWorker {
 }
 
 // @public (undocumented)
+export interface DataWorkerHandlerOption {
+    readonly host?: AccelHost;
+    readonly module?: AccelModule | (() => AccelModule);
+}
+
+// @public (undocumented)
 export interface DataWorkerOptions {
     readonly timeoutMs?: number;
     // (undocumented)
     readonly worker: WorkerLike;
+}
+
+// @public (undocumented)
+export interface FilterInput {
+    // (undocumented)
+    readonly filter: FilterModel;
+    // (undocumented)
+    readonly options?: FilterOptions;
+    // (undocumented)
+    readonly table: ColumnTable;
+}
+
+// @public (undocumented)
+export interface GroupInput {
+    // (undocumented)
+    readonly grouping: GroupingModel;
+    // (undocumented)
+    readonly options?: GroupRowsOptions;
+    // (undocumented)
+    readonly table: ColumnTable;
+}
+
+// @public
+export function isAbortError(err: unknown): boolean;
+
+// @public
+export function isSharedMemoryAvailable(): boolean;
+
+// @public (undocumented)
+export interface PivotInput {
+    // (undocumented)
+    readonly model: PivotModel;
+    // (undocumented)
+    readonly table: ColumnTable;
+}
+
+// @public (undocumented)
+export interface PoolTask {
+    // (undocumented)
+    readonly arg?: ReadonlyArray<unknown>;
+    readonly fn: string;
+    readonly priority?: TaskPriority;
+    readonly signal?: AbortSignal;
+    // (undocumented)
+    readonly transfer?: ReadonlyArray<Transferable>;
+}
+
+// @public
+export interface PoolTimer {
+    // (undocumented)
+    clear(handle: unknown): void;
+    // (undocumented)
+    set(fn: () => void, ms: number): unknown;
+}
+
+// @public
+export function resolveWorkerCap(hardwareConcurrency: number, maxUtilization: number): number;
+
+// @public (undocumented)
+export interface SortInput {
+    // (undocumented)
+    readonly options?: SortOptions;
+    // (undocumented)
+    readonly sort: SortModel;
+    // (undocumented)
+    readonly table: ColumnTable;
+}
+
+// @public
+export type TaskPriority = 'high' | 'normal' | 'low';
+
+// @public
+export const VIEWPORT_LAYOUT_CONSTANT: {
+    readonly HEADER_BYTE_LENGTH: 64;
+    readonly DESCRIPTOR_BYTE_LENGTH: 32;
+    readonly REGION_ALIGNMENT: 8;
+    readonly VIEWPORT_MAGIC: 1330075202;
+    readonly VIEWPORT_LAYOUT_VERSION: 1;
+    readonly SEQ_BYTE_OFFSET: number;
+    readonly ROW_OFFSET_BYTE_OFFSET: number;
+    readonly ROW_COUNT_BYTE_OFFSET: number;
+    readonly GENERATION_BYTE_OFFSET: number;
+};
+
+// @public
+export class ViewportBuffer {
+    static attach(buffer: SharedArrayBuffer | ArrayBuffer, column: ReadonlyArray<ViewportColumnSpec>, capacityRow: number): ViewportBuffer;
+    beginWrite(): void;
+    // (undocumented)
+    readonly buffer: SharedArrayBuffer | ArrayBuffer;
+    static create(option: ViewportBufferOptions): ViewportBuffer;
+    endWrite(): void;
+    readonly isShared: boolean;
+    // (undocumented)
+    readonly layout: ViewportLayout;
+    readFrame(option?: ViewportReadOptions): ViewportFrame | null;
+    get rowCount(): number;
+    get sequence(): number;
+    waitForChange(lastSequence: number, timeoutMs?: number): 'ok' | 'timed-out';
+    waitForChangeAsync(lastSequence: number, timeoutMs?: number): Promise<'ok' | 'timed-out'>;
+    write(frame: ViewportFrameInput): void;
+    writePayload(frame: ViewportFrameInput): void;
+}
+
+// @public (undocumented)
+export interface ViewportBufferOptions {
+    readonly capacityRow: number;
+    // (undocumented)
+    readonly column: ReadonlyArray<ViewportColumnSpec>;
+    readonly preferShared?: boolean;
+}
+
+// @public
+export type ViewportColumnKind = 'int32' | 'float64' | 'utf8';
+
+// @public
+export interface ViewportColumnLayout {
+    // (undocumented)
+    readonly auxByteLength: number;
+    readonly auxByteOffset: number;
+    // (undocumented)
+    readonly dataByteLength: number;
+    readonly dataByteOffset: number;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly kind: ViewportColumnKind;
+}
+
+// @public (undocumented)
+export interface ViewportColumnSpec {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly kind: ViewportColumnKind;
+    readonly textBytePerRow?: number;
+}
+
+// @public
+export interface ViewportFrame {
+    // (undocumented)
+    readonly column: ReadonlyArray<ViewportFrameColumn>;
+    readonly generation: number;
+    readonly retryCount: number;
+    // (undocumented)
+    readonly rowCount: number;
+    readonly rowOffset: number;
+    readonly sequence: number;
+}
+
+// @public
+export interface ViewportFrameColumn {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly kind: ViewportColumnKind;
+    readonly value: Int32Array | Float64Array | ReadonlyArray<string>;
+}
+
+// @public (undocumented)
+export interface ViewportFrameInput {
+    // (undocumented)
+    readonly column: ReadonlyArray<{
+        readonly id: string;
+        readonly value: ArrayLike<number> | ReadonlyArray<string>;
+    }>;
+    // (undocumented)
+    readonly generation?: number;
+    // (undocumented)
+    readonly rowCount: number;
+    // (undocumented)
+    readonly rowOffset: number;
+}
+
+// @public (undocumented)
+export interface ViewportLayout {
+    // (undocumented)
+    readonly byteLength: number;
+    // (undocumented)
+    readonly capacityRow: number;
+    // (undocumented)
+    readonly column: ReadonlyArray<ViewportColumnLayout>;
+    // (undocumented)
+    readonly descriptorByteLength: number;
+    // (undocumented)
+    readonly headerByteLength: number;
+}
+
+// @public
+export interface ViewportPortLike {
+    // (undocumented)
+    addEventListener(type: 'message', listener: (e: {
+        data: unknown;
+    }) => void): void;
+    // (undocumented)
+    postMessage(message: unknown, transfer?: ReadonlyArray<Transferable>): void;
+    // (undocumented)
+    removeEventListener(type: 'message', listener: (e: {
+        data: unknown;
+    }) => void): void;
+}
+
+// @public
+export interface ViewportPublisher {
+    readonly buffer: ViewportBuffer | null;
+    // (undocumented)
+    dispose(): void;
+    // (undocumented)
+    readonly mode: ViewportTransportMode;
+    publish(frame: ViewportFrameInput): void;
+}
+
+// @public (undocumented)
+export interface ViewportPublisherOptions {
+    // (undocumented)
+    readonly capacityRow: number;
+    // (undocumented)
+    readonly column: ReadonlyArray<ViewportColumnSpec>;
+    readonly mode?: ViewportTransportMode;
+    // (undocumented)
+    readonly port: ViewportPortLike;
+}
+
+// @public (undocumented)
+export interface ViewportReadOptions {
+    readonly maxRetry?: number | undefined;
+    readonly onPayloadCopied?: (attempt: number) => void;
+}
+
+// @public
+export interface ViewportSubscriber {
+    // (undocumented)
+    dispose(): void;
+    latest(): ViewportFrame | null;
+    readonly mode: ViewportTransportMode | null;
+    onFrame(listener: (frame: ViewportFrame) => void): () => void;
+    poll(): ViewportFrame | null;
+}
+
+// @public (undocumented)
+export interface ViewportSubscriberOptions {
+    readonly maxRetry?: number | undefined;
+    // (undocumented)
+    readonly port: ViewportPortLike;
+}
+
+// @public
+export type ViewportTransportMode = 'shared' | 'postMessage';
+
+// @public
+export interface WorkerBudget {
+    readonly maxUtilization?: number;
+    readonly maxWorker?: number;
+}
+
+// @public
+export class WorkerPool {
+    constructor(option?: WorkerPoolOptions);
+    dispose(): void;
+    // (undocumented)
+    readonly mode: 'worker' | 'inline';
+    observeMainThreadLatency(ms: number): void;
+    setBudget(budget: WorkerBudget): void;
+    stat(): WorkerPoolStat;
+    submit<T = unknown>(task: PoolTask): Promise<T>;
+}
+
+// @public (undocumented)
+export interface WorkerPoolOptions {
+    readonly adaptive?: boolean;
+    readonly fallback?: (fn: string, arg: ReadonlyArray<unknown>) => unknown;
+    readonly hardwareConcurrency?: number;
+    readonly idleTimeoutMs?: number;
+    readonly latencyBudgetMs?: number;
+    readonly mainThreadBudgetMs?: number;
+    readonly maxUtilization?: number;
+    // (undocumented)
+    readonly maxWorker?: number;
+    // (undocumented)
+    readonly now?: () => number;
+    readonly spawn?: () => WorkerLike;
+    readonly taskTimeoutMs?: number;
+    readonly terminateOnAbort?: boolean;
+    // (undocumented)
+    readonly timer?: PoolTimer;
+    readonly workerAvailable?: boolean;
+}
+
+// @public (undocumented)
+export interface WorkerPoolStat {
+    readonly active: number;
+    // (undocumented)
+    readonly cancelled: number;
+    // (undocumented)
+    readonly completed: number;
+    readonly concurrencyLimit: number;
+    // (undocumented)
+    readonly failed: number;
+    readonly idleWorker: number;
+    readonly maxWorker: number;
+    // (undocumented)
+    readonly meanLatencyMs: number;
+    // (undocumented)
+    readonly mode: 'worker' | 'inline';
+    // (undocumented)
+    readonly p95LatencyMs: number;
+    readonly queued: number;
+    readonly spawnedWorker: number;
 }
 
 // (No @packageDocumentation comment for this package)

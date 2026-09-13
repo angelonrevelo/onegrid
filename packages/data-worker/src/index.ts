@@ -41,11 +41,13 @@ import type {
   GroupNode,
 } from '@onegrid/data';
 import type {
+  Aggregation,
   SortModel,
   FilterModel,
   GroupingModel,
   PivotModel,
 } from '@onegrid/protocol';
+import type { AccelStatus } from './handler.js';
 
 /** @public */
 export interface DataWorkerOptions {
@@ -106,6 +108,30 @@ export class DataWorker {
     return this.host.invoke('pivot', [{ table, model }]);
   }
 
+  /** Reduce one column, over every row or over `rowIndex`. */
+  aggregate(
+    table: ColumnTable,
+    aggregation: Aggregation,
+    rowIndex: ReadonlyArray<number> | Int32Array | null = null,
+  ): Promise<unknown> {
+    return this.host.invoke('aggregate', [{ table, aggregation, rowIndex }]);
+  }
+
+  /**
+   * Hand the worker a compiled acceleration kernel (e.g. `index-accel.wasm`
+   * bytes). Numeric sort / filter / group / aggregate jobs then run on it,
+   * byte-identically. Resolves to the backend in use and why; a bad kernel
+   * leaves the previous backend in place rather than rejecting.
+   */
+  configureAccel(byte: ArrayBuffer | Uint8Array): Promise<AccelStatus> {
+    return this.host.invoke('configureAccel', [{ byte }]);
+  }
+
+  /** The backend the worker is currently using, and why. */
+  accelStatus(): Promise<AccelStatus> {
+    return this.host.invoke('accelStatus', []);
+  }
+
   dispose(): void {
     this.host.dispose();
   }
@@ -115,6 +141,28 @@ export class DataWorker {
 export function createDataWorker(opts: DataWorkerOptions): DataWorker {
   return new DataWorker(opts);
 }
+
+// -----------------------------------------------------------------------------
+// Acceleration — @onegrid/data jobs on an @onegrid/wasm kernel (see ./accel)
+// -----------------------------------------------------------------------------
+
+export {
+  accelAggregate,
+  accelFilterIndex,
+  accelGroupRows,
+  accelSortIndex,
+} from './accel.js';
+export { createDataWorkerHandler } from './handler.js';
+export type {
+  AccelStatus,
+  AggregateInput,
+  ConfigureAccelInput,
+  DataWorkerHandlerOption,
+  FilterInput,
+  GroupInput,
+  PivotInput,
+  SortInput,
+} from './handler.js';
 
 // -----------------------------------------------------------------------------
 // SharedArrayBuffer viewport — see ./viewport-buffer for the seqlock rationale
