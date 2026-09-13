@@ -34,10 +34,19 @@ describe('buildDistinctSql', () => {
     ).toEqual({
       sql:
         'SELECT "status" AS "value", COUNT(*) AS "count" FROM events' +
-        ' WHERE "region" = ? AND CAST("status" AS VARCHAR) ILIKE ?' +
+        ` WHERE "region" = ? AND CAST("status" AS VARCHAR) ILIKE ? ESCAPE '\\'` +
         ' GROUP BY "status" ORDER BY "count" DESC, "status" ASC NULLS LAST LIMIT 6',
       params: ['emea', 'ac%'],
     });
+  });
+
+  it('the search prefix declares its escape character', () => {
+    const { sql, params } = buildDistinctSql({
+      source: 'events',
+      request: { columnId: 'status', filter: null, search: 'a_c', limit: 5 },
+    });
+    expect(sql).toContain(`CAST("status" AS VARCHAR) ILIKE ? ESCAPE '\\'`);
+    expect(params).toEqual(['a\\_c%']);
   });
 
   it('keeps hostile input out of the SQL string', () => {
@@ -51,7 +60,8 @@ describe('buildDistinctSql', () => {
         limit: 1.9,
       },
     });
-    expect(sql).not.toContain("'");
+    // The only quotes allowed are the fixed ESCAPE clause's own.
+    expect(sql.replaceAll("ESCAPE '\\'", '')).not.toContain("'");
     expect(sql).not.toContain('1=1');
     expect(sql).toContain('"sta""tus"');
     expect(sql.endsWith('LIMIT 2')).toBe(true);

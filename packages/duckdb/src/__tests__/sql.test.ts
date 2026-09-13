@@ -150,7 +150,7 @@ describe('buildBlockSql', () => {
       }),
       defaultLimit: 100,
     });
-    expect(insens.sql).toContain('"name" ILIKE ?');
+    expect(insens.sql).toContain('CAST("name" AS VARCHAR) ILIKE ?');
     expect(insens.params[0]).toBe('%a%');
 
     const sens = buildBlockSql({
@@ -166,7 +166,34 @@ describe('buildBlockSql', () => {
       }),
       defaultLimit: 100,
     });
-    expect(sens.sql).toContain('"name" LIKE ?');
+    expect(sens.sql).toContain('CAST("name" AS VARCHAR) LIKE ?');
+  });
+
+  // Both found by running the builder's SQL against a real DuckDB (1.5.5):
+  // DuckDB LIKE has NO default escape character, so `a\_b` matched only a
+  // literal backslash and every search containing `_` / `%` / `\` silently
+  // matched nothing; and ILIKE on a BIGINT / DOUBLE / TIMESTAMP column is a
+  // binder error, so a quick filter spanning every column failed outright.
+  it('string operators cast the column to VARCHAR and declare the escape character', () => {
+    const cases = [
+      ['contains', false, `CAST("amount" AS VARCHAR) ILIKE ? ESCAPE '\\'`],
+      ['contains', true, `CAST("amount" AS VARCHAR) LIKE ? ESCAPE '\\'`],
+      ['notContains', false, `CAST("amount" AS VARCHAR) NOT ILIKE ? ESCAPE '\\'`],
+      ['startsWith', false, `CAST("amount" AS VARCHAR) ILIKE ? ESCAPE '\\'`],
+      ['endsWith', true, `CAST("amount" AS VARCHAR) LIKE ? ESCAPE '\\'`],
+    ] as const;
+    for (const [op, caseSensitive, want] of cases) {
+      const out = buildBlockSql({
+        source: 't',
+        request: baseReq({
+          filter: { type: 'comparison', columnId: 'amount', op, value: '1_5', caseSensitive },
+        }),
+        defaultLimit: 100,
+      });
+      expect(out.sql).toContain(want);
+      // The escape character is fixed SQL; the value only ever travels as a parameter.
+      expect(out.params[0]).toContain('1\\_5');
+    }
   });
 
   it('escapes LIKE special characters', () => {
@@ -203,9 +230,13 @@ describe('buildBlockSql', () => {
       defaultLimit: 100,
     });
     expect(out.sql).toContain('"age" > ?');
-    expect(out.sql).toContain('"name" ILIKE ?');
-    // Outer AND, inner OR.
-    expect(out.sql).toMatch(/AND \([^)]*OR/);
+    expect(out.sql).toContain('CAST("name" AS VARCHAR) ILIKE ?');
+    // Outer AND, inner OR — asserted structurally: the string operators now
+    // wrap the column in CAST(...), so a regex that forbids `)` inside the OR
+    // group no longer describes the nesting.
+    expect(out.sql).toContain(
+      `WHERE ("age" > ? AND (CAST("name" AS VARCHAR) ILIKE ? ESCAPE '\\' OR CAST("name" AS VARCHAR) ILIKE ? ESCAPE '\\'))`,
+    );
     expect(out.params).toEqual([30, 'A%', 'B%']);
   });
 

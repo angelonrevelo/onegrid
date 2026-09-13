@@ -92,7 +92,7 @@ export function buildDistinctSql(options: BuildDistinctSqlOptions): SqlPart {
   }
   if (request.search) {
     params.push(`${escapeLike(request.search)}%`);
-    clause.push(`CAST(${col} AS VARCHAR) ILIKE ?`);
+    clause.push(`${likeTarget(col)} ILIKE ?${LIKE_ESCAPE}`);
   }
   const limit = Math.max(0, Math.floor(request.limit)) + 1;
   const sql =
@@ -172,22 +172,22 @@ function translateComparison(node: ComparisonFilter, params: unknown[]): string 
     case 'contains': {
       const op = node.caseSensitive ? 'LIKE' : 'ILIKE';
       params.push(`%${escapeLike(String(node.value ?? ''))}%`);
-      return `${col} ${op} ?`;
+      return `${likeTarget(col)} ${op} ?${LIKE_ESCAPE}`;
     }
     case 'notContains': {
       const op = node.caseSensitive ? 'NOT LIKE' : 'NOT ILIKE';
       params.push(`%${escapeLike(String(node.value ?? ''))}%`);
-      return `${col} ${op} ?`;
+      return `${likeTarget(col)} ${op} ?${LIKE_ESCAPE}`;
     }
     case 'startsWith': {
       const op = node.caseSensitive ? 'LIKE' : 'ILIKE';
       params.push(`${escapeLike(String(node.value ?? ''))}%`);
-      return `${col} ${op} ?`;
+      return `${likeTarget(col)} ${op} ?${LIKE_ESCAPE}`;
     }
     case 'endsWith': {
       const op = node.caseSensitive ? 'LIKE' : 'ILIKE';
       params.push(`%${escapeLike(String(node.value ?? ''))}`);
-      return `${col} ${op} ?`;
+      return `${likeTarget(col)} ${op} ?${LIKE_ESCAPE}`;
     }
     default:
       return null;
@@ -243,10 +243,23 @@ function quoteIdent(id: string): string {
 }
 
 function escapeLike(s: string): string {
-  // Default LIKE escape char is `\\` in DuckDB; ESCAPE not specified means
-  // `\\` is treated as the escape character. We produce `\` before special
-  // chars so `%` and `_` are literal.
+  // DuckDB's LIKE has NO default escape character — this comment used to claim
+  // `\` was the default, and against a real DuckDB 1.5.5 `'a_b' LIKE 'a\_b'` is
+  // false. Every pattern built here is therefore paired with LIKE_ESCAPE, which
+  // declares `\`; with it, `\%`, `\_` and `\\` match a literal %, _ and \.
   return s.replace(/[\\%_]/g, (m) => `\\${m}`);
+}
+
+/** Appended to every LIKE / ILIKE so escapeLike's backslashes mean something. */
+const LIKE_ESCAPE = " ESCAPE '\\'";
+
+/**
+ * LIKE / ILIKE only bind to VARCHAR in DuckDB: on a BIGINT, DOUBLE or TIMESTAMP
+ * column they are a binder error (`~~*(BIGINT, STRING_LITERAL)`), so a quick
+ * filter spanning every column failed outright. The cast is a no-op on VARCHAR.
+ */
+function likeTarget(col: string): string {
+  return `CAST(${col} AS VARCHAR)`;
 }
 
 export function parseOffsetCursor(cursor: string | null): number {
