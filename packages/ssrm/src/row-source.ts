@@ -10,6 +10,11 @@
 // Block size is configurable; default 200 rows per block. Concurrent
 // fetches for the same block are deduplicated.
 //
+// Query changes (`setSort` / `setFilter`) can be debounced, and every change
+// starts a new generation: in-flight fetches of the old generation are
+// aborted, and a response that lands late anyway is discarded rather than
+// cached under the new query.
+//
 // Cursor strategy: this row source uses offset-encoded cursors
 // (`offset:N`) so it can jump directly to any row index without walking
 // forward block-by-block. Servers that want to use this row source must
@@ -22,9 +27,11 @@ import type {
   BlockRequest,
   BlockResponse,
   DataSource,
+  DistinctResult,
   FilterModel,
   SortModel,
 } from '@onegrid/protocol';
+import { excludeColumnFilter } from './filter-exclude';
 
 export interface RowSource {
   readonly numRows: number;
@@ -72,6 +79,20 @@ export interface SsrmRowSourceOptions {
    *  function to materialize rows. Omit when you only consume JSON
    *  responses. */
   readonly decodeArrowIpc?: ArrowDecoder;
+  /** Coalesce rapid `setSort` / `setFilter` calls: only the last call inside
+   *  this many milliseconds applies. Default 0 (apply immediately). With a
+   *  filter box, typing six characters then queries once instead of six
+   *  times. */
+  readonly debounceMs?: number;
+}
+
+/** Options for {@link SsrmRowSourceHandle.fetchDistinct}. */
+export interface SsrmDistinctOption {
+  /** Case-insensitive prefix on the value's string form. */
+  readonly search?: string;
+  /** Default 1000. */
+  readonly limit?: number;
+  readonly signal?: AbortSignal;
 }
 
 export interface SsrmRowSourceHandle extends RowSource {
@@ -83,12 +104,19 @@ export interface SsrmRowSourceHandle extends RowSource {
   readonly getCacheSize: () => number;
   /** Replace the active sort. Drops all cached blocks and refetches on
    *  next read — invariant: blocks fetched under sort A aren't valid under
-   *  sort B. */
+   *  sort B. Debounced when `debounceMs` is set. */
   readonly setSort: (sort: SortModel) => void;
   /** Replace the active filter. Same cache invalidation as setSort. */
   readonly setFilter: (filter: FilterModel) => void;
   /** Update the total row count (e.g., after a filter narrows the result). */
   readonly setNumRows: (numRows: number) => void;
+  /** Distinct values + counts for a column under the active filter, minus
+   *  that column's own set rule so unticked values stay listed. Resolves
+   *  `{ kind: 'unsupported' }` when the data source cannot answer. */
+  readonly fetchDistinct: (
+    columnId: string,
+    option?: SsrmDistinctOption,
+  ) => Promise<DistinctResult>;
 }
 
 interface CachedBlock {
@@ -102,11 +130,22 @@ export function createSsrmRowSource(
   const blockSize = options.blockSize ?? 200;
   const placeholder = options.placeholder ?? '…';
   const decodeArrow = options.decodeArrowIpc;
+  const debounceMs = Math.max(0, options.debounceMs ?? 0);
   const blocks = new Map<number, CachedBlock>();
   const inflight = new Map<number, Promise<void>>();
   let currentSort: SortModel = options.initialSort ?? [];
   let currentFilter: FilterModel = options.initialFilter ?? null;
   let currentNumRows = options.numRows;
+
+  // Every query change starts a new generation. Without it a block requested
+  // under filter A could land after setFilter(B) and be served as B's rows.
+  let generation = 0;
+  let controller = new AbortController();
+
+  let pendingSort: SortModel | null = null;
+  let hasPendingFilter = false;
+  let pendingFilter: FilterModel = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
   function fetchBlock(blockIndex: number): void {
     if (blocks.has(blockIndex) || inflight.has(blockIndex)) return;
@@ -118,9 +157,11 @@ export function createSsrmRowSource(
       sort: currentSort,
       filter: currentFilter,
     };
-    const promise = dataSource
-      .fetchBlock(req)
+    const born = generation;
+    const promise: Promise<void> = dataSource
+      .fetchBlock(req, { signal: controller.signal })
       .then((res) => {
+        if (born !== generation) return;
         const rows = decodeRows(res, decodeArrow);
         blocks.set(blockIndex, { rows });
         // Server-authoritative row count: when the result set narrows
@@ -133,10 +174,12 @@ export function createSsrmRowSource(
         options.onUpdate?.();
       })
       .catch(() => {
-        // Leave the block uncached; next read will retry.
+        // Aborted or failed: leave the block uncached; next read will retry.
       })
       .finally(() => {
-        inflight.delete(blockIndex);
+        // Only clear our own entry — a newer generation may have claimed
+        // this block index since.
+        if (inflight.get(blockIndex) === promise) inflight.delete(blockIndex);
       });
     inflight.set(blockIndex, promise);
   }
@@ -155,8 +198,58 @@ export function createSsrmRowSource(
   }
 
   function invalidateAll(): void {
+    generation++;
+    controller.abort();
+    controller = new AbortController();
     blocks.clear();
     inflight.clear();
+  }
+
+  function applyPending(): void {
+    timer = null;
+    if (pendingSort !== null) {
+      currentSort = pendingSort;
+      pendingSort = null;
+    }
+    if (hasPendingFilter) {
+      currentFilter = pendingFilter;
+      hasPendingFilter = false;
+      pendingFilter = null;
+    }
+    invalidateAll();
+    options.onUpdate?.();
+  }
+
+  function schedule(): void {
+    if (debounceMs === 0) {
+      applyPending();
+      return;
+    }
+    if (timer !== null) clearTimeout(timer);
+    timer = setTimeout(applyPending, debounceMs);
+  }
+
+  function fetchDistinct(
+    columnId: string,
+    option: SsrmDistinctOption = {},
+  ): Promise<DistinctResult> {
+    if (!dataSource.fetchDistinct) {
+      return Promise.resolve({
+        kind: 'unsupported',
+        reason: 'the data source does not implement fetchDistinct',
+      });
+    }
+    // A pending (debounced) filter is what the user is looking at.
+    const filter = hasPendingFilter ? pendingFilter : currentFilter;
+    return dataSource.fetchDistinct(
+      {
+        columnId,
+        filter: excludeColumnFilter(filter, columnId),
+        limit: option.limit ?? 1000,
+        ...(option.search ? { search: option.search } : {}),
+      },
+      option.signal ? { signal: option.signal } : undefined,
+    );
   }
 
   const handle: SsrmRowSourceHandle = {
@@ -170,19 +263,19 @@ export function createSsrmRowSource(
     invalidateAll,
     getCacheSize: () => blocks.size,
     setSort: (sort) => {
-      currentSort = sort;
-      invalidateAll();
-      options.onUpdate?.();
+      pendingSort = sort;
+      schedule();
     },
     setFilter: (filter) => {
-      currentFilter = filter;
-      invalidateAll();
-      options.onUpdate?.();
+      pendingFilter = filter;
+      hasPendingFilter = true;
+      schedule();
     },
     setNumRows: (n) => {
       currentNumRows = n;
       options.onUpdate?.();
     },
+    fetchDistinct,
   };
   return handle;
 }

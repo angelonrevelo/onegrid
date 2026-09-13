@@ -9,6 +9,7 @@
 // Endpoints:
 //   GET  /schema   → Schema
 //   POST /block    body: BlockRequest   → BlockResponse<'json'>
+//   POST /distinct body: DistinctRequest → DistinctResponse
 //   GET  /healthz  → "ok"
 //
 // CORS enabled for any origin (development server only).
@@ -22,6 +23,7 @@
 import http from 'node:http';
 import {
   createColumnTable,
+  createTableIndex,
   filterIndex,
   groupRows,
   sortIndex,
@@ -31,6 +33,7 @@ import {
 import type {
   BlockRequest,
   BlockResponse,
+  DistinctRequest,
   HierarchyEntry,
   KeysetCursor,
   Schema,
@@ -43,6 +46,7 @@ import {
   isLegacyOffsetCursor,
   parseLegacyOffsetCursor,
 } from '@onegrid/ssrm';
+import { answerDistinct } from './distinct';
 
 // -----------------------------------------------------------------------------
 // Synthetic dataset
@@ -100,6 +104,9 @@ const COLUMNS: ColumnInput[] = [
 ];
 
 const TABLE = createColumnTable(COLUMNS);
+// Column dictionaries for /distinct, built lazily on first use per column and
+// shared by every request after it. The table is never mutated.
+const TABLE_INDEX = createTableIndex(TABLE);
 
 const SCHEMA: Schema = TABLE.schema;
 
@@ -509,10 +516,41 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === 'POST' && url.pathname === '/distinct') {
+    void readBody(req).then(
+      (body) => {
+        let request: DistinctRequest;
+        try {
+          request = JSON.parse(body) as DistinctRequest;
+        } catch {
+          send(res, 400, { error: 'invalid json' });
+          return;
+        }
+        try {
+          const t = Date.now();
+          const response = answerDistinct(TABLE_INDEX, request);
+          const ms = Date.now() - t;
+          console.log(
+            `[onegrid:ssrm-mock] distinct column=${request.columnId} filter=${request.filter ? '1' : '0'} → ${String(response.entry.length)} values in ${String(ms)}ms`,
+          );
+          send(res, 200, response);
+        } catch (err) {
+          console.error('[onegrid:ssrm-mock] error', err);
+          send(res, 500, { error: String(err) });
+        }
+      },
+      (err) => {
+        console.error('[onegrid:ssrm-mock] body error', err);
+        send(res, 500, { error: 'body read error' });
+      },
+    );
+    return;
+  }
+
   send(res, 404, { error: 'not found' });
 });
 
 server.listen(PORT, () => {
   console.log(`[onegrid:ssrm-mock] listening on http://localhost:${String(PORT)}`);
-  console.log('[onegrid:ssrm-mock] endpoints: /healthz, /schema, /block');
+  console.log('[onegrid:ssrm-mock] endpoints: /healthz, /schema, /block, /distinct');
 });

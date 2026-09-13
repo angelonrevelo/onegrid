@@ -15,6 +15,7 @@
 import type {
   BlockRequest,
   ComparisonFilter,
+  DistinctRequest,
   FilterNode,
   LogicalFilter,
   SortField,
@@ -67,6 +68,38 @@ export function buildCountSql(options: Pick<BuildBlockSqlOptions, 'source' | 're
     `SELECT COUNT(*) AS c FROM ${options.source}` +
     (where.sql ? ` WHERE ${where.sql}` : '');
   return { sql, params: where.params };
+}
+
+export interface BuildDistinctSqlOptions {
+  /** Quoted source: a table name or `(SELECT … )` subquery. */
+  readonly source: string;
+  readonly request: DistinctRequest;
+}
+
+/**
+ * Distinct values + counts for one column under the request's filter,
+ * ordered by count descending. Fetches `limit + 1` rows so the caller can
+ * report truncation without a second query.
+ */
+export function buildDistinctSql(options: BuildDistinctSqlOptions): SqlPart {
+  const { source, request } = options;
+  const col = quoteIdent(request.columnId);
+  const params: unknown[] = [];
+  const clause: string[] = [];
+  if (request.filter) {
+    const filterSql = translateFilterNode(request.filter, params);
+    if (filterSql) clause.push(filterSql);
+  }
+  if (request.search) {
+    params.push(`${escapeLike(request.search)}%`);
+    clause.push(`CAST(${col} AS VARCHAR) ILIKE ?`);
+  }
+  const limit = Math.max(0, Math.floor(request.limit)) + 1;
+  const sql =
+    `SELECT ${col} AS "value", COUNT(*) AS "count" FROM ${source}` +
+    (clause.length > 0 ? ` WHERE ${clause.join(' AND ')}` : '') +
+    ` GROUP BY ${col} ORDER BY "count" DESC, ${col} ASC NULLS LAST LIMIT ${String(limit)}`;
+  return { sql, params };
 }
 
 /** Build the SQL that DESCRIBEs the source's columns + types. */

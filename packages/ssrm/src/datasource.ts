@@ -11,15 +11,17 @@
 // `invalidate()` and `getCacheStats()` for tests / advanced consumers.
 //
 // The factory builds an object literal so optional protocol methods
-// (`subscribe`, `mutate`) are present only when the underlying transport
-// actually supports them — preserving the contract semantics that
-// `transport.subscribe === undefined` means "no live updates."
+// (`subscribe`, `mutate`, `fetchDistinct`) are present only when the
+// underlying transport actually supports them — preserving the contract
+// semantics that `transport.subscribe === undefined` means "no live updates."
 // =============================================================================
 
 import type {
   BlockRequest,
   BlockResponse,
   DataSource,
+  DistinctRequest,
+  DistinctResult,
   FetchOptions,
   Mutation,
   MutationResult,
@@ -41,6 +43,7 @@ export function createSsrmDataSource(
   options: SsrmCacheOptions = {},
 ): SsrmDataSourceHandle {
   const cache = new BlockCache({ maxBlocks: options.maxBlocks ?? 50 });
+  const retainQueryCount = Math.max(1, options.retainQueryCount ?? 2);
 
   let cachedSchema: Schema | null = null;
   let schemaPromise: Promise<Schema> | null = null;
@@ -64,8 +67,11 @@ export function createSsrmDataSource(
 
   const fetchBlock = async (req: BlockRequest, opts?: FetchOptions): Promise<BlockResponse> => {
     const fingerprint = BlockCache.fingerprintFor(req);
-    if (currentFingerprint !== null && currentFingerprint !== fingerprint) {
-      cache.retainFingerprint(fingerprint);
+    if (currentFingerprint !== fingerprint) {
+      // Keep the last few queries' blocks rather than only the active one:
+      // a filter toggled off and back on, or a sort flipped and flipped
+      // back, is then served from cache instead of refetched.
+      cache.retainRecentFingerprint(fingerprint, retainQueryCount);
     }
     currentFingerprint = fingerprint;
 
@@ -129,6 +135,26 @@ export function createSsrmDataSource(
       mutations: ReadonlyArray<Mutation>,
       opts?: FetchOptions,
     ): Promise<MutationResult> => transportMutate(mutations, opts);
+  }
+
+  if (transport.distinct) {
+    const transportDistinct = transport.distinct;
+    // A set-filter popover re-renders while it waits; identical requests
+    // share one round-trip. Results are not cached — the counts move with
+    // the data, and the popover is opened rarely enough not to need it.
+    const distinctInflight = new Map<string, Promise<DistinctResult>>();
+    handle.fetchDistinct = (req: DistinctRequest, opts?: FetchOptions): Promise<DistinctResult> => {
+      const key = JSON.stringify([req.columnId, req.filter, req.search ?? '', req.limit]);
+      const existing = distinctInflight.get(key);
+      if (existing) return existing;
+      const promise = transportDistinct(req, opts);
+      distinctInflight.set(key, promise);
+      const cleanup = (): void => {
+        if (distinctInflight.get(key) === promise) distinctInflight.delete(key);
+      };
+      promise.then(cleanup, cleanup);
+      return promise;
+    };
   }
 
   return handle;

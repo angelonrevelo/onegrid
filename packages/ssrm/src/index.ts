@@ -35,9 +35,12 @@ export { createSsrmRowSource } from './row-source';
 export type {
   ArrowDecoder,
   RowSource,
+  SsrmDistinctOption,
   SsrmRowSourceHandle,
   SsrmRowSourceOptions,
 } from './row-source';
+
+export { excludeColumnFilter } from './filter-exclude';
 
 export { createSsrmTreeSource } from './tree-source';
 export type {

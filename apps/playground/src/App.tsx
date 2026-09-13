@@ -363,6 +363,9 @@ export const App = (): JSX.Element => {
   const [sort, setSort] = useState<SortModel>([]);
   const [filterQuery, setFilterQuery] = useState<string>('');
   const [columnFilters, setColumnFilters] = useState<ReadonlyArray<FilterRule>>([]);
+  // SSRM reads the filter box through a short debounce, so typing a word
+  // issues one server query instead of one per keystroke.
+  const [ssrmFilterQuery, setSsrmFilterQuery] = useState<string>('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showColumnPanel, setShowColumnPanel] = useState(false);
   const [showV009Demo, setShowV009Demo] = useState(false);
@@ -378,6 +381,13 @@ export const App = (): JSX.Element => {
   const [showCheckboxColumn, setShowCheckboxColumn] = useState(false);
   /** When non-null, a set-filter popover is open for this rule id. */
   const [setFilterOpenFor, setSetFilterOpenFor] = useState<string | null>(null);
+  // SSRM set-filter values, fetched from the server (POST /distinct) when a
+  // popover opens. Null while loading.
+  const [ssrmDistinct, setSsrmDistinct] = useState<
+    | { readonly ruleId: string; readonly distinct: ReadonlyArray<DistinctValue> }
+    | { readonly ruleId: string; readonly error: string }
+    | null
+  >(null);
   /** Per-column substring filters from the floating filter row. */
   const [floatingFilters, setFloatingFilters] = useState<Record<string, string>>({});
 
@@ -1486,12 +1496,51 @@ export const App = (): JSX.Element => {
     }
   }, [sort, grid, mode, ssrm]);
 
+  // Debounce the filter box for SSRM: only the value that sits still for
+  // 150ms reaches the server.
+  useEffect(() => {
+    if (mode !== 'ssrm') return undefined;
+    const timer = setTimeout(() => {
+      setSsrmFilterQuery(filterQuery);
+    }, 150);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [filterQuery, mode]);
+
+  // SSRM set-filter popover: ask the server for the column's distinct values
+  // under the other active filters whenever a popover opens.
+  useEffect(() => {
+    if (mode !== 'ssrm' || !ssrm || setFilterOpenFor === null) return undefined;
+    const rule = columnFilters.find((r) => r.id === setFilterOpenFor);
+    if (!rule) return undefined;
+    const ruleId = rule.id;
+    const controller = new AbortController();
+    setSsrmDistinct(null);
+    void ssrm.handle
+      .fetchDistinct(rule.columnId, { limit: 1000, signal: controller.signal })
+      .then((result) => {
+        setSsrmDistinct(
+          result.kind === 'distinct'
+            ? { ruleId, distinct: result.entry }
+            : { ruleId, error: result.reason },
+        );
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        setSsrmDistinct({ ruleId, error: String(err) });
+      });
+    return () => {
+      controller.abort();
+    };
+  }, [mode, ssrm, setFilterOpenFor, columnFilters]);
+
   // SSRM filter wiring: forward the merged FilterModel to the row source,
   // which invalidates blocks and refetches on next read.
   useEffect(() => {
     if (mode !== 'ssrm' || !ssrm) return;
     const columnIds = SSRM_COLUMNS.map((c) => c.id);
-    const quick = buildQuickFilter(filterQuery, columnIds);
+    const quick = buildQuickFilter(ssrmFilterQuery, columnIds);
     const columnar = buildColumnFilter(columnFilters);
     let merged: FilterModel = null;
     if (quick && columnar) {
@@ -1501,7 +1550,7 @@ export const App = (): JSX.Element => {
     }
     ssrm.handle.setFilter(merged);
     grid?.scrollToRow(0);
-  }, [filterQuery, columnFilters, mode, ssrm, grid]);
+  }, [ssrmFilterQuery, columnFilters, mode, ssrm, grid]);
 
   // Memory mode: when sort or filter changes, scroll to top and refresh so
   // the renderer reads through the new permutation.
@@ -2095,7 +2144,30 @@ export const App = (): JSX.Element => {
                           }}
                         />
                       )}
-                    {setFilterOpenFor === rule.id && mode !== 'memory' && (
+                    {setFilterOpenFor === rule.id &&
+                      mode === 'ssrm' &&
+                      ssrmDistinct !== null &&
+                      ssrmDistinct.ruleId === rule.id &&
+                      'distinct' in ssrmDistinct && (
+                        <SetFilterPopover
+                          distinct={ssrmDistinct.distinct}
+                          selected={rule.values ?? []}
+                          onApply={(values) => {
+                            updateColumnFilter(rule.id, { values });
+                          }}
+                          onClose={() => {
+                            setSetFilterOpenFor(null);
+                          }}
+                        />
+                      )}
+                    {setFilterOpenFor === rule.id &&
+                      mode !== 'memory' &&
+                      !(
+                        mode === 'ssrm' &&
+                        ssrmDistinct !== null &&
+                        ssrmDistinct.ruleId === rule.id &&
+                        'distinct' in ssrmDistinct
+                      ) && (
                       <div
                         role="dialog"
                         style={{
@@ -2110,9 +2182,13 @@ export const App = (): JSX.Element => {
                           maxWidth: 280,
                         }}
                       >
-                        Set filter values are enumerated locally. SSRM /
-                        DuckDB / Pivot modes need server-side distinct;
-                        coming in a follow-up commit.
+                        {mode === 'ssrm'
+                          ? ssrmDistinct !== null &&
+                            ssrmDistinct.ruleId === rule.id &&
+                            'error' in ssrmDistinct
+                            ? `The server could not list values: ${ssrmDistinct.error}`
+                            : 'Loading values from the server…'
+                          : 'Set filter values are enumerated locally. DuckDB / Pivot modes need server-side distinct; coming in a follow-up commit.'}
                         <div style={{ marginTop: 8 }}>
                           <button
                             type="button"

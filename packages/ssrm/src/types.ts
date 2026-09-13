@@ -5,6 +5,8 @@
 import type {
   BlockRequest,
   BlockResponse,
+  DistinctRequest,
+  DistinctResult,
   FetchOptions,
   Mutation,
   MutationResult,
@@ -38,11 +40,23 @@ export interface SsrmTransport {
 
   /** Optional: explicit close. Useful for WebSocket-backed transports. */
   readonly close?: () => void;
+
+  /**
+   * Optional: distinct values + counts for one column. Undefined means the
+   * server cannot answer; SsrmDataSource then omits `fetchDistinct`.
+   */
+  readonly distinct?: (req: DistinctRequest, opts?: FetchOptions) => Promise<DistinctResult>;
 }
 
 export interface SsrmCacheOptions {
   /** Default 50. Blocks are evicted LRU-style when this is exceeded. */
   readonly maxBlocks?: number;
+  /**
+   * How many recent queries (sort / filter / group fingerprints) keep their
+   * blocks. Default 2, so toggling back to the previous query is a cache
+   * hit. 1 restores evict-on-every-change.
+   */
+  readonly retainQueryCount?: number;
   /** Reserved for future use: prefetch ±N blocks around the viewport. */
   readonly prefetchAhead?: number;
 }

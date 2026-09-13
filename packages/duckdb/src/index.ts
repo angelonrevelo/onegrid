@@ -22,6 +22,7 @@
 //   - fetchBlock()   — sort + filter + offset pagination, plus a parallel
 //                      COUNT(*) for totalRowCount on every fetch (lets the
 //                      grid resize the scroll spacer when filters narrow).
+//   - fetchDistinct() — GROUP BY + COUNT(*) for set-filter value lists.
 //
 // Not yet:
 //   - subscribe / live updates (DuckDB doesn't push)
@@ -40,6 +41,8 @@ import type {
   ColumnSchema,
   ColumnType,
   DataSource,
+  DistinctRequest,
+  DistinctResult,
   FetchOptions,
   Schema,
 } from '@onegrid/protocol';
@@ -47,6 +50,7 @@ import type {
 import {
   buildBlockSql,
   buildCountSql,
+  buildDistinctSql,
   buildSchemaSql,
   encodeOffsetCursor,
   parseOffsetCursor,
@@ -183,7 +187,34 @@ export function createDuckDbDataSource(
     }
   }
 
-  return { schema, fetchBlock, close };
+  async function fetchDistinct(
+    req: DistinctRequest,
+    opts?: FetchOptions,
+  ): Promise<DistinctResult> {
+    if (opts?.signal?.aborted) {
+      throw new DOMException('aborted', 'AbortError');
+    }
+    const conn = await getConnection();
+    const part = buildDistinctSql({ source: wrappedSource, request: req });
+    const result = await runQuery(conn, part.sql, part.params);
+    if (opts?.signal?.aborted) {
+      throw new DOMException('aborted', 'AbortError');
+    }
+    const rows = arrowResultToJsonRows(result);
+    const limit = Math.max(0, Math.floor(req.limit));
+    return {
+      kind: 'distinct',
+      entry: rows.slice(0, limit).map((row) => ({
+        value: row['value'] ?? null,
+        // COUNT(*) is BIGINT in DuckDB and arrives as a bigint.
+        count: Number(row['count']),
+      })),
+      truncated: rows.length > limit,
+      ...(req.requestId !== undefined ? { requestId: req.requestId } : {}),
+    };
+  }
+
+  return { schema, fetchBlock, fetchDistinct, close };
 }
 
 /**
@@ -306,8 +337,9 @@ function duckdbTypeToOneGrid(raw: string): ColumnType {
 export {
   buildBlockSql,
   buildCountSql,
+  buildDistinctSql,
   buildSchemaSql,
   parseOffsetCursor,
   encodeOffsetCursor,
 } from './sql';
-export type { SqlPart, BuildBlockSqlOptions } from './sql';
+export type { SqlPart, BuildBlockSqlOptions, BuildDistinctSqlOptions } from './sql';

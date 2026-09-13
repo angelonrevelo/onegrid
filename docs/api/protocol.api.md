@@ -95,6 +95,7 @@ export type Cursor = string;
 // @public (undocumented)
 export interface DataSource {
     readonly fetchBlock: (req: BlockRequest, opts?: FetchOptions) => Promise<BlockResponse>;
+    readonly fetchDistinct?: (req: DistinctRequest, opts?: FetchOptions) => Promise<DistinctResult>;
     readonly mutate?: (mutations: ReadonlyArray<Mutation>, opts?: FetchOptions) => Promise<MutationResult>;
     readonly schema: () => Promise<Schema> | Schema;
     readonly subscribe?: (onPatch: (patch: Patch) => void, opts?: FetchOptions) => Unsubscribe;
@@ -108,6 +109,46 @@ export interface DeleteMutation {
     readonly kind: 'delete';
     // (undocumented)
     readonly rowId: string | number;
+}
+
+// @public (undocumented)
+export interface DistinctEntry {
+    // (undocumented)
+    readonly count: number;
+    // (undocumented)
+    readonly value: unknown;
+}
+
+// @public (undocumented)
+export interface DistinctRequest {
+    // (undocumented)
+    readonly columnId: string;
+    readonly filter: FilterModel;
+    readonly limit: number;
+    // (undocumented)
+    readonly requestId?: string;
+    readonly search?: string;
+}
+
+// @public (undocumented)
+export interface DistinctResponse {
+    readonly entry: ReadonlyArray<DistinctEntry>;
+    // (undocumented)
+    readonly kind: 'distinct';
+    // (undocumented)
+    readonly requestId?: string;
+    readonly truncated: boolean;
+}
+
+// @public (undocumented)
+export type DistinctResult = DistinctResponse | DistinctUnsupported;
+
+// @public (undocumented)
+export interface DistinctUnsupported {
+    // (undocumented)
+    readonly kind: 'unsupported';
+    // (undocumented)
+    readonly reason: string;
 }
 
 // @public (undocumented)

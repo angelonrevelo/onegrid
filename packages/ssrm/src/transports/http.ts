@@ -1,14 +1,17 @@
 // =============================================================================
 // HTTP SSRM transport
 //
-// Plain `fetch`-based transport. Three endpoints:
+// Plain `fetch`-based transport. Four endpoints:
 //
-//   GET  ${baseUrl}/schema                     → Schema
-//   POST ${baseUrl}/block      body: BlockRequest → BlockResponse<'json'>
-//   POST ${baseUrl}/mutate     body: Mutation[]   → MutationResult
+//   GET  ${baseUrl}/schema                        → Schema
+//   POST ${baseUrl}/block      body: BlockRequest    → BlockResponse<'json'>
+//   POST ${baseUrl}/distinct   body: DistinctRequest → DistinctResult
+//   POST ${baseUrl}/mutate     body: Mutation[]      → MutationResult
 //
 // Subscribe is not supported over HTTP — for live updates use the
 // WebSocket transport. AbortController integration via `opts.signal`.
+// A server without `/distinct` (404) reads as `{ kind: 'unsupported' }`
+// rather than an error, so older servers keep working.
 //
 // Designed for:
 //   - localhost development against a mock server
@@ -19,6 +22,8 @@
 import type {
   BlockRequest,
   BlockResponse,
+  DistinctRequest,
+  DistinctResult,
   FetchOptions,
   Mutation,
   MutationResult,
@@ -88,6 +93,20 @@ export function createHttpTransport(options: HttpTransportOptions): SsrmTranspor
     return (await res.json()) as BlockResponse<'json'>;
   }
 
+  async function distinct(req: DistinctRequest, opts?: FetchOptions): Promise<DistinctResult> {
+    const res = await fetchImpl(`${base}/distinct`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(req),
+      signal: opts?.signal ?? null,
+    });
+    if (res.status === 404) {
+      return { kind: 'unsupported', reason: 'the server has no /distinct endpoint' };
+    }
+    if (!res.ok) throw new Error(`@onegrid/ssrm http: distinct ${String(res.status)}`);
+    return (await res.json()) as DistinctResult;
+  }
+
   async function mutate(
     mutations: ReadonlyArray<Mutation>,
     opts?: FetchOptions,
@@ -102,5 +121,5 @@ export function createHttpTransport(options: HttpTransportOptions): SsrmTranspor
     return (await res.json()) as MutationResult;
   }
 
-  return { request, schema, mutate };
+  return { request, schema, mutate, distinct };
 }
