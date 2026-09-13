@@ -326,6 +326,17 @@ export interface PivotedTable {
 // @public
 export function registerAggregator(key: string, factory: AggregatorFactory): void;
 
+// @public
+export interface RowHeights {
+    get(index: number): number;
+    indexAtOffset(offset: number): number;
+    // (undocumented)
+    readonly length: number;
+    prefixSum(count: number): number;
+    setHeight(index: number, newHeight: number): void;
+    readonly totalHeight: number;
+}
+
 // @public (undocumented)
 export function sortIndex(table: ColumnTable, sort: SortModel, options?: SortOptions): Int32Array;
 
@@ -356,6 +367,26 @@ export interface TreeNode<T = unknown> {
     // (undocumented)
     readonly id: string;
     readonly loadChildren?: () => Promise<ReadonlyArray<TreeNode<T>>>;
+}
+
+// @public (undocumented)
+export class UniformHeights implements RowHeights {
+    constructor(length: number, height: number);
+    clone(): UniformHeights;
+    // (undocumented)
+    get(index: number): number;
+    readonly height: number;
+    indexAtOffset(offset: number): number;
+    // (undocumented)
+    readonly length: number;
+    get overrideCount(): number;
+    // (undocumented)
+    prefixSum(count: number): number;
+    // (undocumented)
+    setHeight(index: number, newHeight: number): void;
+    // (undocumented)
+    get totalHeight(): number;
+    withAdded(row: Iterable<number>, extra: number): UniformHeights;
 }
 
 // (No @packageDocumentation comment for this package)

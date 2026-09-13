@@ -15,7 +15,7 @@
 // No framework dependency. The host is any HTMLElement.
 // =============================================================================
 
-import { FenwickHeights } from '@onegrid/data';
+import { FenwickHeights, UniformHeights, type RowHeights } from '@onegrid/data';
 import { ariaCellId, LiveAnnouncer } from '@onegrid/a11y';
 import { RendererPool } from './render/renderer-pool';
 import {
@@ -133,7 +133,7 @@ export class Grid {
   // not mutated.
   private columns: ColumnDef[];
   private rowSource: RowSource;
-  private fenwick: FenwickHeights;
+  private fenwick: RowHeights;
   private readonly headerHeight: number;
   private readonly frozenColumnCount: number;
   private readonly theme: GridTheme;
@@ -206,7 +206,7 @@ export class Grid {
   private suppressSelectionUntilUp = false;
 
   // Master-detail (expandable rows) state.
-  private baseHeights: Float32Array;
+  private baseHeights: RowHeights;
   private expanded: Set<number> = new Set();
   private readonly detailHeight: number;
   private readonly getDetailContent: ((rowIndex: number) => HTMLElement | null) | undefined;
@@ -343,6 +343,21 @@ export class Grid {
     | undefined;
   private readonly onToggleGroup: ((path: string) => void) | undefined;
   private readonly stickyGroupRowsEnabled: boolean;
+  /** Group rows the sticky-group lookup has already found, over the scanned
+   *  row interval [lo, hi] of `source`. See nearestGroupRow. */
+  private stickyScan: {
+    source: RowSource;
+    numRows: number;
+    lo: number;
+    hi: number;
+    groupRow: number[];
+  } | null = null;
+  /** Consecutive frames spent extending a still-unresolved sticky scan. */
+  private stickyScanPass = 0;
+  /** Rows the sticky-group lookup may inspect per frame. */
+  private static readonly STICKY_SCAN_BUDGET = 20_000;
+  /** Frames a lookup keeps extending on its own before waiting for a scroll. */
+  private static readonly STICKY_SCAN_MAX_PASS = 250;
 
   // Fill handle (drag-extend selection). Drag state is null when the
   // user isn't actively dragging the handle.
@@ -557,11 +572,8 @@ export class Grid {
       this.expanded = new Set(options.expanded);
     }
     const rowHeight = options.rowHeight ?? DEFAULT_ROW_HEIGHT;
-    this.baseHeights =
-      typeof rowHeight === 'number'
-        ? new Float32Array(options.rowSource.numRows).fill(rowHeight)
-        : new Float32Array(rowHeight); // copy so the user's array isn't mutated
-    this.fenwick = new FenwickHeights(this.computeEffectiveHeights());
+    this.baseHeights = this.makeBaseHeights(options.rowSource.numRows, rowHeight);
+    this.fenwick = this.computeEffectiveHeights();
 
     // The host needs to be a positioning context for our absolute children.
     // Only force `position: relative` if it's currently `static` — otherwise
@@ -844,6 +856,11 @@ export class Grid {
     });
     this.resizeObserver.observe(this.host);
     this.scrollHost.addEventListener('scroll', this.handleScroll, { passive: true });
+    // Not passive: once the scroll range is scaled the wheel must be taken
+    // over (see handleWheel), which needs preventDefault. On the HOST, not the
+    // scroll host: the cell overlay and other layers are siblings of the
+    // scroll host, so a wheel over a cell never bubbles through it.
+    this.host.addEventListener('wheel', this.handleWheel, { passive: false });
     this.scrollHost.addEventListener('pointerdown', this.handlePointerDown);
     this.scrollHost.addEventListener('pointermove', this.handlePointerMove);
     this.scrollHost.addEventListener('pointerleave', this.handlePointerLeave);
@@ -929,6 +946,7 @@ export class Grid {
 
   setRowSource(rowSource: RowSource, rowHeight: number | Float32Array = DEFAULT_ROW_HEIGHT): void {
     this.rowSource = rowSource;
+    this.stickyScan = null;
     // Update baseHeights too — not just fenwick. Without this, a later
     // setExpanded / toggleExpanded (which React fires when the
     // expandedRows state resets on mode or numRows change) calls
@@ -937,11 +955,8 @@ export class Grid {
     // size the previous dataset had. Symptom: visible-row meter caps
     // at the previous dataset's last row even after switching to a
     // larger dataset.
-    this.baseHeights =
-      typeof rowHeight === 'number'
-        ? new Float32Array(rowSource.numRows).fill(rowHeight)
-        : new Float32Array(rowHeight); // copy so consumer's array isn't mutated downstream
-    this.fenwick = new FenwickHeights(this.computeEffectiveHeights());
+    this.baseHeights = this.makeBaseHeights(rowSource.numRows, rowHeight);
+    this.fenwick = this.computeEffectiveHeights();
     this.scrollHost.setAttribute('aria-rowcount', String(rowSource.numRows));
     this.scrollTop = 0;
     this.scrollLeft = 0;
@@ -1056,6 +1071,8 @@ export class Grid {
 
   /** Force a redraw on the next animation frame. */
   refresh(): void {
+    // Row meta may have changed without a new row source.
+    this.stickyScan = null;
     this.lastRenderedScrollTop = -1;
     this.scheduleRender();
   }
@@ -1102,6 +1119,7 @@ export class Grid {
     if (this.rafHandle !== null) cancelAnimationFrame(this.rafHandle);
     this.resizeObserver.disconnect();
     this.scrollHost.removeEventListener('scroll', this.handleScroll);
+    this.host.removeEventListener('wheel', this.handleWheel);
     this.scrollHost.removeEventListener('pointerdown', this.handlePointerDown);
     this.scrollHost.removeEventListener('pointermove', this.handlePointerMove);
     this.scrollHost.removeEventListener('pointerleave', this.handlePointerLeave);
@@ -1169,20 +1187,34 @@ export class Grid {
     this.mountedDetails.clear();
   }
 
-  /** Combine baseHeights + detailHeight per expanded row into the array
-   *  the FenwickHeights tree consumes. Cheap: ~1 alloc + O(rows) iteration.
-   *  Called on expansion changes. */
-  private computeEffectiveHeights(): Float32Array {
-    if (this.expanded.size === 0) return this.baseHeights;
-    const out = new Float32Array(this.baseHeights.length);
-    for (let i = 0; i < this.baseHeights.length; i++) {
-      out[i] = (this.baseHeights[i] ?? 0) + (this.expanded.has(i) ? this.detailHeight : 0);
+  /** A single row height is the billion-row case: store it once, not once per
+   *  row (a per-row Float32Array plus FenwickHeights' two Float64Arrays was
+   *  ~24 GB at 1B rows). An explicit per-row array keeps FenwickHeights, which
+   *  copies it, so the caller's array is never mutated. */
+  private makeBaseHeights(numRows: number, rowHeight: number | Float32Array): RowHeights {
+    return typeof rowHeight === 'number'
+      ? new UniformHeights(numRows, rowHeight)
+      : new FenwickHeights(rowHeight);
+  }
+
+  /** The heights the layout reads: baseHeights plus detailHeight on every
+   *  expanded row — and, with nothing expanded, baseHeights itself. A uniform
+   *  base stays sparse (O(expanded)), so expanding a row a billion rows deep
+   *  costs what expanding row 0 does; an explicit per-row base keeps the O(rows)
+   *  rebuild it always had. Called on expansion and row-height changes. */
+  private computeEffectiveHeights(): RowHeights {
+    const base = this.baseHeights;
+    if (this.expanded.size === 0) return base;
+    if (base instanceof UniformHeights) return base.withAdded(this.expanded, this.detailHeight);
+    const out = new Float32Array(base.length);
+    for (let i = 0; i < base.length; i++) {
+      out[i] = base.get(i) + (this.expanded.has(i) ? this.detailHeight : 0);
     }
-    return out;
+    return new FenwickHeights(out);
   }
 
   private rebuildHeightsFromExpansion(): void {
-    this.fenwick = new FenwickHeights(this.computeEffectiveHeights());
+    this.fenwick = this.computeEffectiveHeights();
   }
 
   // ---------------------------------------------------------------------------
@@ -1419,7 +1451,18 @@ export class Grid {
 
   private handleScroll = (): void => {
     if (this.suppressScrollEvent) return;
-    const newTop = physicalToLogical(this.scrollHost.scrollTop, this.scrollScale);
+    const physical = this.scrollHost.scrollTop;
+    // Browsers dispatch `scroll` asynchronously, long after setLogicalScrollTop's
+    // synchronous suppress flag has been cleared, and the event carries the
+    // scrollbar's rounded physical position. When the range is scaled, one
+    // physical pixel spans `scrollScale` logical pixels (~1,750 at 1B rows), so
+    // re-deriving from it would snap a precise jump back by dozens of rows.
+    // If the scrollbar still sits on the physical pixel our logical position
+    // maps to, this is that echo — keep the precise position.
+    const echo =
+      this.scrollScale > 1 &&
+      Math.abs(logicalToPhysical(this.scrollTop, this.scrollScale) - physical) < 1;
+    const newTop = echo ? this.scrollTop : physicalToLogical(physical, this.scrollScale);
     const newLeft = this.scrollHost.scrollLeft;
     const delta = newTop - this.scrollTop;
     this.velocity = Math.abs(delta);
@@ -1432,6 +1475,40 @@ export class Grid {
     this.scrollLeft = newLeft;
     // Tooltip dismiss on scroll: anchored content makes no sense once
     // its anchor moves under the pointer.
+    if (this.tooltipEl) this.hideTooltip();
+    this.scheduleRender();
+  };
+
+  /**
+   * Unscaled, the browser's own wheel scrolling is exactly right, so it is left
+   * alone. Once the scroll range is scaled, native wheel scrolling moves the
+   * PHYSICAL scrollbar and every physical pixel is `scrollScale` content pixels:
+   * at 1B rows one wheel notch would jump ~6,000 rows and row-by-row scrolling
+   * would be impossible. So the wheel is applied in content pixels instead.
+   * Ctrl+wheel is pinch-zoom on trackpads and stays with the browser.
+   */
+  private handleWheel = (e: WheelEvent): void => {
+    if (this.scrollScale <= 1 || e.ctrlKey) return;
+    const line = this.fenwick.get(this.fenwick.indexAtOffset(this.scrollTop)) || DEFAULT_ROW_HEIGHT;
+    const page = Math.max(1, this.dataBandBottom() - this.dataBandTop());
+    const unit = e.deltaMode === 1 ? line : e.deltaMode === 2 ? page : 1;
+    const deltaY = e.deltaY * unit;
+    const deltaX = e.deltaX * (e.deltaMode === 2 ? this.viewportWidth : unit);
+    if (deltaY === 0 && deltaX === 0) return;
+    e.preventDefault();
+    // Horizontal range is never scaled; hand it straight to the scroll host.
+    if (deltaX !== 0) this.scrollHost.scrollLeft += deltaX;
+    if (deltaY !== 0) {
+      const logicalTotal =
+        this.dataBandTop() + this.pinnedBottomBandHeight() + this.statusBarHeight() + this.fenwick.totalHeight;
+      const maxTop = Math.max(0, logicalTotal - this.viewportHeight);
+      const nextTop = Math.min(maxTop, Math.max(0, this.scrollTop + deltaY));
+      const delta = nextTop - this.scrollTop;
+      this.velocity = Math.abs(delta);
+      this.velocitySmoothed = this.velocitySmoothed * 0.6 + this.velocity * 0.4;
+      this.scrollDirection = delta > 0 ? 1 : delta < 0 ? -1 : this.scrollDirection;
+      this.setLogicalScrollTop(nextTop);
+    }
     if (this.tooltipEl) this.hideTooltip();
     this.scheduleRender();
   };
@@ -1554,7 +1631,7 @@ export class Grid {
     if (e.key === 'PageDown' || e.key === 'PageUp') {
       if (active) {
         const dataHeight = this.dataBandBottom() - this.dataBandTop();
-        const approxRowHeight = this.baseHeights[active.row] ?? 28;
+        const approxRowHeight = this.baseHeights.get(active.row) || 28;
         const rows = Math.max(1, Math.floor(dataHeight / approxRowHeight));
         const dr = e.key === 'PageDown' ? rows : -rows;
         this.gotoCell(
@@ -1648,7 +1725,7 @@ export class Grid {
       if (rowAtBoundary !== null) {
         this.resizeRow = rowAtBoundary;
         this.resizeStartClientY = e.clientY;
-        this.resizeStartHeight = this.baseHeights[rowAtBoundary] ?? 0;
+        this.resizeStartHeight = this.baseHeights.get(rowAtBoundary);
         this.suppressSelectionUntilUp = true;
         try {
           this.scrollHost.setPointerCapture(e.pointerId);
@@ -1968,9 +2045,9 @@ export class Grid {
     if (this.resizeRow !== null) {
       const delta = e.clientY - this.resizeStartClientY;
       const next = Math.max(16, this.resizeStartHeight + delta);
-      const current = this.baseHeights[this.resizeRow] ?? 0;
+      const current = this.baseHeights.get(this.resizeRow);
       if (next !== current) {
-        this.baseHeights[this.resizeRow] = next;
+        this.baseHeights.setHeight(this.resizeRow, next);
         this.rebuildHeightsFromExpansion();
         this.scheduleRender();
         this.onRowResize?.(this.resizeRow, next, false);
@@ -2075,7 +2152,7 @@ export class Grid {
     }
     // Row resize finalize (wave 24). Same shape as column resize.
     if (this.resizeRow !== null) {
-      const h = this.baseHeights[this.resizeRow] ?? 0;
+      const h = this.baseHeights.get(this.resizeRow);
       this.onRowResize?.(this.resizeRow, h, true);
       this.resizeRow = null;
       this.suppressSelectionUntilUp = false;
@@ -4147,7 +4224,7 @@ export class Grid {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = this.theme.mutedText;
     for (let row = start; row <= end; row++) {
-      const baseH = this.baseHeights[row] ?? 0;
+      const baseH = this.baseHeights.get(row);
       const expanded = this.expanded.has(row);
       const glyph = expanded ? '\u25BC' : '\u25B6'; // ▼ / ▶
       // Center the chevron vertically in the row's BASE band (not over
@@ -4165,7 +4242,7 @@ export class Grid {
     const visibleExpanded = new Set<number>();
     let y = this.dataBandTop() + (firstRowTop - this.scrollTop);
     for (let row = start; row <= end; row++) {
-      const baseH = this.baseHeights[row] ?? 0;
+      const baseH = this.baseHeights.get(row);
       if (this.expanded.has(row)) {
         visibleExpanded.add(row);
         let panel = this.mountedDetails.get(row);
@@ -4692,35 +4769,23 @@ export class Grid {
   }
 
   private drawStickyGroupRow(_visibleStart: number): void {
-    if (!this.stickyGroupRowsEnabled || !this.getRowMeta) return;
-    if (this.rowSource.numRows === 0) return;
-    // Use the un-overscanned topmost-visible row index — overscan
-    // can include rows above the actual viewport edge and would
-    // hide the sticky case (when the parent group is in the
-    // overscan band but scrolled above the data top).
-    const topmost = this.fenwick.indexAtOffset(this.scrollTop);
-    if (topmost < 0 || topmost >= this.rowSource.numRows) return;
-    // Walk backwards (or use topmost itself) looking for the nearest
-    // ancestor group row that has scrolled above the data band's top.
-    let parentRow = -1;
-    let parentMeta: import('./types').RowGroupMeta | null = null;
-    const startScan = topmost;
-    for (let r = startScan; r >= 0; r--) {
-      const m = this.getRowMeta(r);
-      if (m && m.kind === 'group') {
-        const y = this.fenwick.prefixSum(r);
-        const h = this.fenwick.get(r);
-        if (y + h <= this.scrollTop) {
-          parentRow = r;
-          parentMeta = m;
-          break;
-        }
-        // Group row is still partially or fully visible at its own
-        // position — no sticky needed for this scroll position.
-        return;
+    const parentRow = this.stickyGroupRowAt();
+    if (parentRow === null) {
+      // Not known yet — an unscanned region remains above the viewport. Keep
+      // extending on following frames, but only for a bounded number of them,
+      // so a large table with no groups at all doesn't render forever just to
+      // prove there is nothing to stick. A scroll resumes it.
+      if (this.stickyScanPass < Grid.STICKY_SCAN_MAX_PASS) {
+        this.stickyScanPass++;
+        this.lastRenderedScrollTop = -1;
+        this.scheduleRender();
       }
+      return;
     }
-    if (!parentMeta || parentRow < 0) return;
+    this.stickyScanPass = 0;
+    if (parentRow < 0) return;
+    const parentMeta = this.getRowMeta?.(parentRow);
+    if (!parentMeta || parentMeta.kind !== 'group') return;
     const parentH = this.fenwick.get(parentRow);
     const dataTop = this.dataBandTop();
     const ctx = this.ctx;
@@ -4730,6 +4795,105 @@ export class Grid {
     ctx.clip();
     this.drawGroupRow(parentMeta, dataTop, parentH, this.scrollLeft);
     ctx.restore();
+  }
+
+  /**
+   * The group row whose header sticks at the data band's top: the nearest
+   * group row at or above the topmost visible row, once it has scrolled fully
+   * above the band. -1 when nothing should stick; null while not yet known.
+   *
+   * This used to walk from the topmost visible row back towards row 0 on every
+   * frame. Deep in a large table with few or no group rows that is a walk
+   * proportional to the scroll depth — 25M getRowMeta calls per frame at row
+   * 25M, an 800 ms frame at row 500M measured in Chromium.
+   */
+  private stickyGroupRowAt(): number | null {
+    if (!this.stickyGroupRowsEnabled || !this.getRowMeta) return -1;
+    if (this.rowSource.numRows === 0) return -1;
+    // Use the un-overscanned topmost-visible row index — overscan can include
+    // rows above the actual viewport edge and would hide the sticky case.
+    const topmost = this.fenwick.indexAtOffset(this.scrollTop);
+    if (topmost < 0 || topmost >= this.rowSource.numRows) return -1;
+    const group = this.nearestGroupRow(topmost);
+    if (group === null || group < 0) return group;
+    const y = this.fenwick.prefixSum(group);
+    const h = this.fenwick.get(group);
+    // A group row still partly or fully visible at its own position needs no
+    // sticky copy.
+    return y + h <= this.scrollTop ? group : -1;
+  }
+
+  /**
+   * Nearest row <= `row` whose meta is a group: -1 when there is none, null
+   * when an unscanned region above means it isn't known yet.
+   *
+   * Group rows found so far are cached over the scanned interval, keyed by the
+   * row source, and the interval is extended by at most STICKY_SCAN_BUDGET rows
+   * per call. Scrolling within or next to the interval costs only the rows it
+   * newly exposes; a jump far away starts a fresh interval. setRowSource and
+   * refresh() drop the cache; a cached group row whose meta no longer says
+   * 'group' drops it too.
+   */
+  private nearestGroupRow(row: number): number | null {
+    const getRowMeta = this.getRowMeta;
+    if (!getRowMeta) return -1;
+    const budgetMax = Grid.STICKY_SCAN_BUDGET;
+    const source = this.rowSource;
+    let scan = this.stickyScan;
+    if (
+      !scan ||
+      scan.source !== source ||
+      scan.numRows !== source.numRows ||
+      row > scan.hi + budgetMax ||
+      row < scan.lo - budgetMax
+    ) {
+      scan = { source, numRows: source.numRows, lo: row + 1, hi: row, groupRow: [] };
+      this.stickyScan = scan;
+      this.stickyScanPass = 0;
+    }
+    let budget = budgetMax;
+    if (row > scan.hi) {
+      for (let r = scan.hi + 1; r <= row; r++) {
+        if (getRowMeta(r)?.kind === 'group') scan.groupRow.push(r);
+      }
+      budget -= row - scan.hi;
+      scan.hi = row;
+    }
+
+    // Largest cached group row <= row (every cached row lies within [lo, hi]).
+    const find = (list: readonly number[]): number => {
+      let lo = 0;
+      let hi = list.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (list[mid]! <= row) lo = mid + 1;
+        else hi = mid;
+      }
+      return lo > 0 ? list[lo - 1]! : -1;
+    };
+
+    let found = find(scan.groupRow);
+    while (found < 0 && scan.lo > 0 && budget > 0) {
+      const next = Math.max(0, scan.lo - budget);
+      const prepend: number[] = [];
+      for (let r = next; r < scan.lo; r++) {
+        if (getRowMeta(r)?.kind === 'group') prepend.push(r);
+      }
+      budget -= scan.lo - next;
+      scan.lo = next;
+      if (prepend.length > 0) scan.groupRow = prepend.concat(scan.groupRow);
+      found = find(scan.groupRow);
+    }
+
+    if (found >= 0) {
+      if (getRowMeta(found)?.kind !== 'group') {
+        // Meta changed under the same source — the cache is stale.
+        this.stickyScan = null;
+        return null;
+      }
+      return found;
+    }
+    return scan.lo === 0 ? -1 : null;
   }
 
   private drawHeader(): void {

@@ -11,6 +11,8 @@
 // =============================================================================
 
 export { FenwickHeights } from './fenwick';
+export { UniformHeights } from './uniform-heights';
+export type { RowHeights } from './uniform-heights';
 
 export { createColumnTable } from './column-table';
 export type {

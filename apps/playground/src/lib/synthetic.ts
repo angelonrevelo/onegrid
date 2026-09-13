@@ -39,7 +39,8 @@ import type { ColumnDef, FilterModel, RowSource, SortModel } from '@onegrid/reac
 export interface SyntheticDataset {
   readonly columns: ReadonlyArray<ColumnDef>;
   readonly rowSource: RowSource;
-  readonly heights: Float32Array;
+  /** Per-row heights, or one uniform height for datasets past VARIABLE_HEIGHT_LIMIT. */
+  readonly heights: Float32Array | number;
 }
 
 export interface MaterializedSyntheticDataset extends SyntheticDataset {
@@ -74,6 +75,10 @@ const STATUS_COLORS: Record<(typeof STATUSES)[number], string> = {
   churned: '#e56f6f',
 };
 
+/** Row counts above this get a uniform height instead of a per-row array. */
+export const VARIABLE_HEIGHT_LIMIT = 10_000_000;
+const UNIFORM_ROW_HEIGHT = 28;
+
 function makeHeights(numRows: number): Float32Array {
   const heights = new Float32Array(numRows);
   // 30% tall, 70% short — exercises FenwickHeights' variable-height path.
@@ -86,7 +91,10 @@ function makeHeights(numRows: number): Float32Array {
  * Use this when you only need rendering performance (no sort/filter).
  */
 export function generateSynthetic(numRows: number): SyntheticDataset {
-  const heights = makeHeights(numRows);
+  // Past VARIABLE_HEIGHT_LIMIT a per-row height array is itself the cost being
+  // measured (4 GB of Float32 at 1B rows before the grid adds its own), so the
+  // big datasets use one uniform height — the path the grid stores sparsely.
+  const heights = numRows > VARIABLE_HEIGHT_LIMIT ? UNIFORM_ROW_HEIGHT : makeHeights(numRows);
   const columns: ReadonlyArray<ColumnDef> = [
     {
       id: 'rowIndex',

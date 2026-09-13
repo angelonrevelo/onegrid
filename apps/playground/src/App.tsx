@@ -76,7 +76,7 @@ import {
   type SsrmTreeConnection,
 } from './lib/ssrm-tree';
 
-const ROW_OPTIONS = [1_000, 10_000, 100_000, 1_000_000, 10_000_000] as const;
+const ROW_OPTIONS = [1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000] as const;
 
 const STATUS_PILL_BG: Record<string, string> = {
   active: '#1f3a2a',
