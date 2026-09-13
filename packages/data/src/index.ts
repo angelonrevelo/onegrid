@@ -57,5 +57,13 @@ export type {
 export { enumerateDistinct, enumerateDistinctChunked } from './distinct';
 export type { DistinctValue, EnumerateDistinctOptions } from './distinct';
 
+export {
+  buildColumnIndex,
+  createTableIndex,
+  enumerateDistinctIndexed,
+  filterIndexed,
+} from './column-index';
+export type { ColumnIndex, EnumerateDistinctIndexedOptions, TableIndex } from './column-index';
+
 export { flattenTree, countTreeNodes } from './tree';
 export type { TreeNode, FlatTreeEntry } from './tree';

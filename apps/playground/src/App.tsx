@@ -22,7 +22,8 @@ import {
   type MaterializedSyntheticDataset,
 } from './lib/synthetic';
 import {
-  enumerateDistinct,
+  createTableIndex,
+  enumerateDistinctIndexed,
   groupRows,
   flattenGroupTree,
   pathKey,
@@ -436,6 +437,13 @@ export const App = (): JSX.Element => {
   // Apply sort + column filters to the materialized dataset. For >1M rows
   // (no materialization), fall through with the lazy rowSource and disabled
   // sort/filter UI.
+  // Dictionary + posting lists per column, built lazily on the first filter
+  // that touches a column and reused for every keystroke after it.
+  const memoryTableIndex = useMemo(
+    () => (memoryDataset?.materialized ? createTableIndex(memoryDataset.table) : null),
+    [memoryDataset],
+  );
+
   const memoryView = useMemo(() => {
     if (!memoryDataset || !memoryDataset.materialized) return null;
     const t0 = performance.now();
@@ -462,7 +470,7 @@ export const App = (): JSX.Element => {
     const all = [explicit, quick, floating].filter((f): f is NonNullable<typeof f> => f !== null);
     const filterModel: FilterModel =
       all.length === 0 ? null : all.length === 1 ? all[0]! : { type: 'logical', op: 'and', filters: all };
-    const view = buildMemoryView(memoryDataset.table, sort, filterModel);
+    const view = buildMemoryView(memoryDataset.table, sort, filterModel, memoryTableIndex ?? undefined);
     const t1 = performance.now();
     if (view.permutation) {
       // eslint-disable-next-line no-console
@@ -471,7 +479,7 @@ export const App = (): JSX.Element => {
       );
     }
     return view;
-  }, [memoryDataset, sort, columnFilters, filterQuery, floatingFilters]);
+  }, [memoryDataset, memoryTableIndex, sort, columnFilters, filterQuery, floatingFilters]);
 
   // ----- ssrm connection -----
   const [ssrm, setSsrm] = useState<SsrmConnection | null>(null);
@@ -2073,9 +2081,9 @@ export const App = (): JSX.Element => {
                     </button>
                     {setFilterOpenFor === rule.id &&
                       mode === 'memory' &&
-                      memoryDataset?.materialized && (
+                      memoryTableIndex && (
                         <SetFilterPopover
-                          distinct={enumerateDistinct(memoryDataset.table, rule.columnId, {
+                          distinct={enumerateDistinctIndexed(memoryTableIndex, rule.columnId, {
                             limit: 1000,
                           })}
                           selected={rule.values ?? []}

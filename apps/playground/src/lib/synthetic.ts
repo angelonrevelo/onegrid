@@ -27,7 +27,9 @@
 import {
   createColumnTable,
   filterIndex,
+  filterIndexed,
   sortIndex,
+  type TableIndex,
   type ColumnInput,
   type ColumnTable,
 } from '@onegrid/data';
@@ -382,6 +384,20 @@ export function materializeSynthetic(numRows: number): MaterializedSyntheticData
   return { columns, rowSource, heights, table, writeCell };
 }
 
+// The sort permutation depends only on (table, sort), but buildMemoryView
+// runs on every filter keystroke — so without this, typing into the quick
+// filter re-sorted a million rows per character (~1s each at 1M).
+const sortCache = new WeakMap<ColumnTable, { key: string; perm: Int32Array }>();
+
+function cachedSortIndex(table: ColumnTable, sort: SortModel): Int32Array {
+  const key = JSON.stringify(sort);
+  const hit = sortCache.get(table);
+  if (hit && hit.key === key) return hit.perm;
+  const perm = sortIndex(table, sort);
+  sortCache.set(table, { key, perm });
+  return perm;
+}
+
 export interface MemoryView {
   readonly numRows: number;
   readonly rowSource: RowSource;
@@ -406,6 +422,7 @@ export function buildMemoryView(
   table: ColumnTable,
   sort: SortModel,
   filter: FilterModel,
+  tableIndex?: TableIndex,
 ): MemoryView {
   let perm: Int32Array | null = null;
 
@@ -417,9 +434,12 @@ export function buildMemoryView(
   const safeSort: SortModel = sort.filter((f) => table.hasColumn(f.columnId));
 
   if (filter !== null) {
-    const sel = filterIndex(table, filter);
+    // With a TableIndex the filter costs one predicate call per DISTINCT
+    // value rather than per row — the quick-filter box stops rescanning
+    // a million strings on every keystroke.
+    const sel = tableIndex ? filterIndexed(tableIndex, filter) : filterIndex(table, filter);
     if (safeSort.length > 0) {
-      const fullPerm = sortIndex(table, safeSort);
+      const fullPerm = cachedSortIndex(table, safeSort);
       const out = new Int32Array(sel.cardinality);
       let j = 0;
       for (let i = 0; i < fullPerm.length; i++) {
@@ -431,7 +451,7 @@ export function buildMemoryView(
       perm = sel.toIndices();
     }
   } else if (safeSort.length > 0) {
-    perm = sortIndex(table, safeSort);
+    perm = cachedSortIndex(table, safeSort);
   }
 
   if (perm === null) {

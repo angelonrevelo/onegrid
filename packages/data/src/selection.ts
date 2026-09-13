@@ -136,10 +136,22 @@ export class BitmapSelection {
 
   /** Materialize as Int32Array of set indices. */
   toIndices(): Int32Array {
+    // A tight byte walk rather than `for..of this.iterate()`: the generator
+    // allocates a result object per set bit, which made materialising a
+    // 500K-row filter cost more than evaluating it.
     const out = new Int32Array(this.cardinality);
+    const bytes = this.bytes;
+    const length = this.length;
     let i = 0;
-    for (const idx of this.iterate()) {
-      out[i++] = idx;
+    for (let b = 0; b < bytes.length; b++) {
+      let byte = bytes[b]!;
+      const base = b << 3;
+      while (byte !== 0) {
+        const low = byte & -byte;
+        const idx = base + 31 - Math.clz32(low);
+        if (idx < length) out[i++] = idx;
+        byte ^= low;
+      }
     }
     return out;
   }
