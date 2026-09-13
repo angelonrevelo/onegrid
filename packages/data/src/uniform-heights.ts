@@ -52,10 +52,12 @@ export class UniformHeights implements RowHeights {
   private prefixDelta: number[] = [0];
 
   constructor(length: number, height: number) {
-    if (!Number.isFinite(length) || length < 0) {
-      throw new Error(`UniformHeights: length must be a non-negative finite number, got ${String(length)}.`);
-    }
-    this.length = Math.floor(length);
+    // Tolerant on purpose. The grid used to allocate `new Float32Array(numRows)`,
+    // which turns a missing or invalid count (a headless host mounting before
+    // its row source is ready) into an empty table. Throwing here would turn
+    // that into a crashed mount, so an invalid length means zero rows.
+    const n = Number(length);
+    this.length = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
     this.height = height;
   }
 

@@ -32,7 +32,7 @@ test.describe('memory mode · 1B rows', () => {
     );
     const mountStart = Date.now();
     await page.evaluate((n) => window.__onegrid?.setRows(n), BILLION);
-    await page.waitForFunction((n) => window.__onegrid?.getViewportInfo().numRows === n, BILLION, {
+    await page.waitForFunction((n) => window.__onegrid?.getViewportInfo?.().numRows === n, BILLION, {
       timeout: 30_000,
     });
     const mountMs = Date.now() - mountStart;
@@ -42,11 +42,11 @@ test.describe('memory mode · 1B rows', () => {
 
     // Exact seek, top to bottom.
     const seek = await page.evaluate((n) => {
-      const og = window.__onegrid!;
+      const og = window.__onegrid;
       const out: Array<[number, number]> = [];
       for (const row of [0, 123_456_789, 500_000_000, n - 1]) {
-        og.scrollToRow(row);
-        out.push([row, og.getViewportInfo().firstVisibleRow]);
+        og?.scrollToRow(row);
+        out.push([row, og?.getViewportInfo?.().firstVisibleRow ?? -1]);
       }
       return out;
     }, BILLION);
@@ -54,14 +54,18 @@ test.describe('memory mode · 1B rows', () => {
     // A real wheel notch in the middle of the dataset.
     await page.evaluate(() => window.__onegrid?.scrollToRow(500_000_000));
     const box = await page.evaluate(() => {
-      const r = window.__onegrid!.host.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      const r = window.__onegrid?.host?.getBoundingClientRect();
+      return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: 0, y: 0 };
     });
     await page.mouse.move(box.x, box.y);
-    const beforeWheel = await page.evaluate(() => window.__onegrid!.getViewportInfo().firstVisibleRow);
+    const beforeWheel = await page.evaluate(() => window.__onegrid?.getViewportInfo?.().firstVisibleRow ?? -1);
     await page.mouse.wheel(0, 100);
     await page.waitForTimeout(250);
-    const afterWheel = await page.evaluate(() => window.__onegrid!.getViewportInfo());
+    const afterWheel = await page.evaluate(() => {
+      const info = window.__onegrid?.getViewportInfo?.();
+      if (!info) throw new Error('getViewportInfo is not exposed by the playground bridge');
+      return info;
+    });
 
     // Sustained scroll at 1B rows.
     await page.evaluate(() => window.__onegrid?.reset());
@@ -76,7 +80,11 @@ test.describe('memory mode · 1B rows', () => {
         requestAnimationFrame(step);
       });
     });
-    const metric = await page.evaluate(() => window.__onegrid!.getMetrics());
+    const metric = await page.evaluate(() => {
+      const og = window.__onegrid;
+      if (!og) throw new Error('playground bridge missing');
+      return og.getMetrics();
+    });
 
     console.log(
       `[bench] 1B rows: mount ${String(mountMs)} ms, heap +${((heapAfter - heapBefore) / 1024 / 1024).toFixed(1)} MB, ` +
