@@ -40,5 +40,23 @@
     "@testcontainers/mysql": "^12.0.1",
     "mysql2": "^3.22.3",
     "testcontainers": "^12.0.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CelestialBrain/onegrid.git",
+    "directory": "packages/adapters/mysql"
+  },
+  "homepage": "https://github.com/CelestialBrain/onegrid#readme",
+  "bugs": {
+    "url": "https://github.com/CelestialBrain/onegrid/issues"
+  },
+  "keywords": [
+    "grid",
+    "datagrid",
+    "table",
+    "data-grid",
+    "mysql",
+    "orm",
+    "sql"
+  ]
 }

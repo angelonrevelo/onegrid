@@ -6,13 +6,13 @@
 
 import { RowDiff } from '@onegrid/protocol';
 
-// @public
+// @beta
 export function applyDiffToSnapshot(snap: Map<string, Readonly<Record<string, unknown>>>, diff: RowDiff): void;
 
-// @public
+// @beta
 export function invertDiff(diff: RowDiff, prevSnap: ReadonlyMap<string, Readonly<Record<string, unknown>>>): RowDiff;
 
-// @public
+// @beta
 export interface TemporalEntry {
     // (undocumented)
     readonly diff: RowDiff;
@@ -22,7 +22,7 @@ export interface TemporalEntry {
     readonly version: number;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export class TemporalLog {
     constructor(opts?: TemporalLogOptions);
     append(diff: RowDiff, ts?: number): TemporalEntry;
@@ -35,7 +35,7 @@ export class TemporalLog {
     snapshotAt(version: number): Map<string, Readonly<Record<string, unknown>>>;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface TemporalLogOptions {
     readonly anchorInterval?: number;
     readonly retentionVersions?: number;

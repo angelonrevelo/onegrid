@@ -41,5 +41,21 @@
     "@vue/test-utils": "^2",
     "jsdom": "^25",
     "vue": "^3.4.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CelestialBrain/onegrid.git",
+    "directory": "packages/adapters/vue"
+  },
+  "homepage": "https://github.com/CelestialBrain/onegrid#readme",
+  "bugs": {
+    "url": "https://github.com/CelestialBrain/onegrid/issues"
+  },
+  "keywords": [
+    "grid",
+    "datagrid",
+    "table",
+    "data-grid",
+    "vue"
+  ]
 }

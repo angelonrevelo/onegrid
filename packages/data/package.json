@@ -35,5 +35,23 @@
   "sideEffects": false,
   "devDependencies": {
     "fast-check": "^4.8.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CelestialBrain/onegrid.git",
+    "directory": "packages/data"
+  },
+  "homepage": "https://github.com/CelestialBrain/onegrid#readme",
+  "bugs": {
+    "url": "https://github.com/CelestialBrain/onegrid/issues"
+  },
+  "keywords": [
+    "grid",
+    "datagrid",
+    "table",
+    "data-grid",
+    "arrow",
+    "columnar",
+    "pivot"
+  ]
 }

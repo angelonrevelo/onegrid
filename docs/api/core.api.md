@@ -4,10 +4,13 @@
 
 ```ts
 
+import { AggregationModel } from '@onegrid/protocol';
+import { AggregationType } from '@onegrid/protocol';
 import { BlockRequest } from '@onegrid/protocol';
 import { BlockResponse } from '@onegrid/protocol';
 import { DataSource } from '@onegrid/protocol';
 import { FilterModel } from '@onegrid/protocol';
+import { PivotModel } from '@onegrid/protocol';
 import { Schema } from '@onegrid/protocol';
 import { SortModel } from '@onegrid/protocol';
 
@@ -148,6 +151,9 @@ export function createTextareaEditor(config?: {
 
 export { DataSource }
 
+// @public
+export const DEFAULT_ROW_HEIGHT = 32;
+
 // @public (undocumented)
 export const DEFAULT_THEME: GridTheme;
 
@@ -179,14 +185,22 @@ export interface FrameStats {
 // @public (undocumented)
 export class Grid {
     constructor(options: GridOptions);
+    applyFilterPanel(): void;
     autoSizeColumn(columnId: string): void;
     autoSizeColumns(): void;
     beginEdit(row: number, col: number, initialText?: string): void;
     // (undocumented)
     cancelEdit(): void;
+    clearFilterPanel(): void;
     // (undocumented)
     clearSelection(): void;
+    // (undocumented)
+    closeAggregationPanel(): void;
+    // (undocumented)
+    closeFilterPanel(): void;
     closeFind(): void;
+    // (undocumented)
+    closePivotPanel(): void;
     commitEdit(): void | Promise<void>;
     copySelectionToClipboard(): Promise<string>;
     // (undocumented)
@@ -195,10 +209,13 @@ export class Grid {
     findPrev(): boolean;
     flashCell(rowIndex: number, columnId: string): void;
     flashRow(rowIndex: number): void;
+    getAggregationModel(): AggregationModel;
     getColumns(): ReadonlyArray<ColumnDef>;
     getFindQuery(): string;
+    getGroupColumns(): string[];
     // (undocumented)
     getMetricsSnapshot(): MetricsSnapshot;
+    getPivotModel(): PivotModel;
     // (undocumented)
     getSelection(): SelectionSnapshot;
     getViewportInfo(): {
@@ -217,7 +234,13 @@ export class Grid {
     isEditing(): boolean;
     // (undocumented)
     isExpanded(rowIndex: number): boolean;
+    // (undocumented)
+    openAggregationPanel(): void;
+    // (undocumented)
+    openFilterPanel(): void;
     openFind(): void;
+    // (undocumented)
+    openPivotPanel(): void;
     refresh(): void;
     replaceAll(newValue: string): number;
     replaceCurrent(newValue?: string): void;
@@ -233,14 +256,17 @@ export class Grid {
     //
     // (undocumented)
     selectCell(pos: CellPosition): void;
+    setColumnAggregator(columnId: string, fn: 'none' | AggregationType): void;
     setColumns(columns: ReadonlyArray<ColumnDef>): void;
     setExpanded(expanded: ReadonlySet<number> | ReadonlyArray<number>): void;
     setFindQuery(query: string): void;
+    setGroupColumns(columnIds: ReadonlyArray<string>): void;
     setLoading(value: boolean): void;
     setPinnedBottomRowSource(rowSource: RowSource | undefined): void;
     setPinnedTopRowSource(rowSource: RowSource | undefined): void;
+    setPivotBin(columnId: string, bin: 'none' | 'rows' | 'columns' | 'values'): void;
     // (undocumented)
-    setRowSource(rowSource: RowSource, rowHeight: number | Float32Array): void;
+    setRowSource(rowSource: RowSource, rowHeight?: number | Float32Array): void;
     setSort(sort: SortModel): void;
     toggleExpanded(rowIndex: number): void;
 }
@@ -251,16 +277,23 @@ export interface GridMeta {
 
 // @public (undocumented)
 export interface GridOptions {
+    readonly aggregationPanelOpen?: boolean;
+    readonly aggregations?: AggregationModel;
     readonly columnGroups?: ReadonlyArray<ColumnGroupDef>;
     readonly columns: ReadonlyArray<ColumnDef>;
     readonly detailHeight?: number;
     readonly editable?: boolean | ((rowIndex: number, columnId: string) => boolean);
+    readonly enableAggregationPanel?: boolean;
     readonly enableColumnReorder?: boolean;
     readonly enableColumnResize?: boolean;
     readonly enableFillHandle?: boolean;
+    readonly enableFilterPanel?: boolean;
     readonly enableFind?: boolean;
+    readonly enableGroupBar?: boolean;
+    readonly enablePivotPanel?: boolean;
     readonly enableRowResize?: boolean;
     readonly expanded?: ReadonlySet<number> | ReadonlyArray<number>;
+    readonly filterPanelOpen?: boolean;
     readonly flash?: {
         readonly durationMs?: number;
         readonly color?: string;
@@ -269,12 +302,14 @@ export interface GridOptions {
     readonly frozenColumnCount?: number;
     readonly getDetailContent?: (rowIndex: number) => HTMLElement | null;
     readonly getRowMeta?: (rowIndex: number) => RowMeta | null | undefined;
+    readonly groupColumns?: ReadonlyArray<string>;
     readonly headerHeight?: number;
     readonly host: HTMLElement;
     readonly loading?: boolean;
     readonly loadingOverlay?: (host: HTMLElement) => void;
     readonly meta?: GridMeta;
     readonly noRowsOverlay?: (host: HTMLElement) => void;
+    readonly onAggregationChange?: (model: AggregationModel) => void;
     readonly onBeginEdit?: (rowIndex: number, columnId: string) => void;
     readonly onCellEdit?: (rowIndex: number, columnId: string, newValue: string, oldValue: unknown) => void;
     readonly onColumnReorder?: (fromIndex: number, toIndex: number, columnId: string) => void;
@@ -292,12 +327,15 @@ export interface GridOptions {
         colStart: number;
         colEnd: number;
     }) => void;
+    readonly onFilterModelChange?: (model: FilterModel) => void;
     readonly onFloatingFilterChange?: (columnId: string, value: string) => void;
     readonly onFrame?: (stats: FrameStats) => void;
     readonly onHeaderClick?: (columnId: string) => void;
     readonly onPaste?: (anchorRow: number, anchorCol: number, rows: ReadonlyArray<ReadonlyArray<string>>) => void;
+    readonly onPivotChange?: (model: PivotModel) => void;
     readonly onReplace?: (rowIndex: number, columnId: string, newValue: string, oldValue: unknown) => void;
-    readonly onRowReorder?: (fromRow: number, toRow: number) => void;
+    readonly onRowGrouping?: (columnIds: string[]) => void;
+    readonly onRowReorder?: (fromRow: number, toRow: number, movedRow: ReadonlyArray<number>) => void;
     // (undocumented)
     readonly onRowResize?: (rowIndex: number, newHeight: number, finalCommit: boolean) => void;
     readonly onSelectionChange?: (selection: SelectionSnapshot) => void;
@@ -306,8 +344,10 @@ export interface GridOptions {
     readonly pinnedBottomRowSource?: RowSource;
     readonly pinnedRowHeight?: number;
     readonly pinnedTopRowSource?: RowSource;
+    readonly pivotModel?: PivotModel;
+    readonly pivotPanelOpen?: boolean;
     readonly rowDragColumnId?: string;
-    readonly rowHeight: number | Float32Array;
+    readonly rowHeight?: number | Float32Array;
     readonly rowSource: RowSource;
     readonly sort?: SortModel;
     readonly statusBar?: boolean;
@@ -327,6 +367,7 @@ export interface GridTheme {
     readonly fontFamily: string;
     // (undocumented)
     readonly fontSize: number;
+    readonly groupBackground?: string;
     // (undocumented)
     readonly headerBackground: string;
     // (undocumented)
@@ -393,7 +434,7 @@ export interface NestedGridOptions {
     readonly data: {
         readonly rowSource: GridOptions['rowSource'];
         readonly columns: GridOptions['columns'];
-        readonly rowHeight: GridOptions['rowHeight'];
+        readonly rowHeight?: GridOptions['rowHeight'];
     };
     // (undocumented)
     readonly detail?: {

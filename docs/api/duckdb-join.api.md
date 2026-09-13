@@ -6,7 +6,7 @@
 
 import { AsyncDuckDB } from '@duckdb/duckdb-wasm';
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface ArrowBytesSource {
     readonly bytes: Uint8Array;
     // (undocumented)
@@ -15,10 +15,10 @@ export interface ArrowBytesSource {
     readonly name: string;
 }
 
-// @public
+// @beta
 export function executeJoinQuery(opts: JoinQueryOptions): Promise<JoinQueryResult>;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface JoinQueryOptions {
     // (undocumented)
     readonly db: AsyncDuckDB;
@@ -27,7 +27,7 @@ export interface JoinQueryOptions {
     readonly sources: ReadonlyArray<JoinSource>;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface JoinQueryResult {
     // (undocumented)
     readonly columns: ReadonlyArray<string>;
@@ -36,13 +36,13 @@ export interface JoinQueryResult {
     readonly rows: ReadonlyArray<Readonly<Record<string, unknown>>>;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export type JoinSource = RowsSource | ArrowBytesSource | SqlSource;
 
-// @public
+// @beta
 export function registerSource(db: AsyncDuckDB, source: JoinSource): Promise<void>;
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface RowsSource {
     // (undocumented)
     readonly kind: 'rows';
@@ -50,7 +50,7 @@ export interface RowsSource {
     readonly rows: ReadonlyArray<Readonly<Record<string, unknown>>>;
 }
 
-// @public (undocumented)
+// @beta (undocumented)
 export interface SqlSource {
     // (undocumented)
     readonly kind: 'sql';
@@ -59,7 +59,7 @@ export interface SqlSource {
     readonly query: string;
 }
 
-// @public
+// @beta
 export function unregisterSource(db: AsyncDuckDB, source: JoinSource): Promise<void>;
 
 // (No @packageDocumentation comment for this package)

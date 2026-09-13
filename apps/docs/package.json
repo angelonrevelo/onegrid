@@ -1,0 +1,24 @@
+{
+  "name": "@onegrid/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "oneGrid documentation site. Astro Starlight; mirrors the curated docs/*.md guides into a searchable, dark-mode-capable site.",
+  "scripts": {
+    "sync": "node sync-content.mjs",
+    "dev": "node sync-content.mjs && astro dev",
+    "build": "node sync-content.mjs && astro build",
+    "preview": "astro preview --port 4175",
+    "typecheck": "node sync-content.mjs && astro check",
+    "clean": "rm -rf dist .astro .turbo src/content/docs/guides"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.40.0",
+    "astro": "^6.4.5",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.0",
+    "typescript": "^5.6.0"
+  }
+}

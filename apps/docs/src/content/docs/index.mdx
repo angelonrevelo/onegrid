@@ -1,0 +1,57 @@
+---
+title: oneGrid
+description: A free, MIT-licensed, framework-agnostic data grid built for millions of rows, multiple databases, formulas, instant updates, and modern ORM integrations.
+template: splash
+hero:
+  tagline: A free, MIT-licensed data grid for millions of rows — formulas, multiple databases, instant updates, and modern ORM integrations, in one coherent stack.
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/CelestialBrain/onegrid
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What oneGrid is
+
+A single MIT-licensed grid that consolidates what real applications need at
+scale into one coherent stack — no per-seat licensing, no feature gates.
+
+<CardGrid stagger>
+  <Card title="Canvas-first rendering" icon="seti:default">
+    Renders millions of rows on a canvas with row + column virtualization,
+    backed by a DOM accessibility shadow (WAI-ARIA 1.2 grid semantics) and
+    DOM overlays for editors and detail panels.
+  </Card>
+  <Card title="Spreadsheet-class formulas" icon="seti:math">
+    An Excel-compatible formula engine — parser, dependency graph with range
+    nodes, demand-driven recompute, hundreds of built-in functions, and
+    OOXML (`.xlsx`) round-trip.
+  </Card>
+  <Card title="Databases + ORMs, first-class" icon="seti:db">
+    Server-side row model with cursor pagination and a real-time row-diff
+    protocol, plus adapters for Postgres, MySQL, SQLite, ClickHouse, DuckDB,
+    Mongo — and ORM integrations.
+  </Card>
+  <Card title="Framework-agnostic" icon="seti:html">
+    A small framework-agnostic core with idiomatic adapters for React, Vue,
+    Svelte, Solid, Angular, and Web Components — plus a headless lifecycle
+    contract.
+  </Card>
+</CardGrid>
+
+## Install
+
+```sh
+npm install @onegrid/core
+# framework adapter, e.g. React:
+npm install @onegrid/react
+```
+
+See [Getting started](/getting-started/) for a first grid, or the
+[package map](/packages/) for the full surface.

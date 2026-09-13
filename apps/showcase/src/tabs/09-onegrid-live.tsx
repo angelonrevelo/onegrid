@@ -264,6 +264,35 @@ function WaveControls({
     enableRowResize: true,
     enableFind: true,
     rowDragColumnId: 'id',
+    enableGroupBar: true,
+    onRowGrouping: (columnIds) => {
+      // v1.3 wave 28: the grid emits the ordered group-by column list.
+      // An adopter wires this to @onegrid/data groupRows() and feeds the
+      // grouped RowSource back via setRowSource(). Here we just log it.
+      console.log(`[showcase] group by: [${columnIds.join(', ')}]`);
+    },
+    enableAggregationPanel: true,
+    onAggregationChange: (model) => {
+      // v1.3 wave 29: the composed AggregationModel. An adopter passes it
+      // to @onegrid/data aggregate()/groupRows(). Here we just log it.
+      console.log(
+        `[showcase] aggregations: ${model.map((a) => `${a.fn}(${a.columnId})`).join(', ') || '(none)'}`,
+      );
+    },
+    enableFilterPanel: true,
+    onFilterModelChange: (model) => {
+      // v1.3 wave 30: the composed FilterModel (batched on Apply). An
+      // adopter passes it to @onegrid/data filterIndex(). Here we log it.
+      console.log(`[showcase] filter model:`, model);
+    },
+    enablePivotPanel: true,
+    onPivotChange: (model) => {
+      // v1.3 wave 31: the composed PivotModel. An adopter passes it to
+      // @onegrid/data pivot() and swaps in the pivoted columns + rows.
+      console.log(
+        `[showcase] pivot: rows=[${model.rows.join(',')}] cols=[${model.columns.join(',')}] vals=[${model.measures.map((m) => `${m.fn}(${m.columnId})`).join(',')}]`,
+      );
+    },
     getRowMeta: (rowIndex) => {
       // Wave 26: pin the first row to the top and the last row to the
       // bottom of the visible band. Demonstrates mid-table row pinning
@@ -279,8 +308,8 @@ function WaveControls({
       // Grid commits height into its own baseHeights array; this callback
       // is just for adopters who want to persist the value.
     },
-    onRowReorder: (from, to) => {
-      console.log(`[showcase] row reorder: ${from} → ${to}`);
+    onRowReorder: (_from, to, movedRow) => {
+      console.log(`[showcase] row reorder: [${movedRow.join(', ')}] → ${to}`);
     },
     onReplace: (rowIndex, columnId, newValue, oldValue) => {
       console.log(`[showcase] replace (${rowIndex}, ${columnId}): ${String(oldValue)} → ${newValue}`);
@@ -304,6 +333,9 @@ function WaveControls({
         <Btn onClick={() => grid?.gotoCell(0, 0)}>Ctrl+Home</Btn>
         <Btn onClick={() => grid?.gotoCell(99_999, 6)}>Ctrl+End</Btn>
         <Btn onClick={() => grid?.openFind()}>Find (Ctrl+F)</Btn>
+        <Btn onClick={() => grid?.openAggregationPanel()}>Aggregations</Btn>
+        <Btn onClick={() => grid?.openFilterPanel()}>Filters</Btn>
+        <Btn onClick={() => grid?.openPivotPanel()}>Pivot</Btn>
       </div>
       <div
         ref={ref}

@@ -751,6 +751,75 @@ split (one file per Excel category + `_shared` for helpers +
   edges when their natural scroll position would scroll them off.
   Verified in showcase: row 1 stayed at the top after Ctrl+End jumped
   to row 100,000. 110/110 core tests pass.
+- Wave 27 (2026-06-02) — **v1.2 tail** — closes the milestone.
+  Multi-row drag-reorder: `onRowReorder(fromRow, toRow, movedRow)` —
+  the third argument carries the travelling set, snapshotted at
+  drag-start (grabbed row inside the selection → whole selection moves;
+  otherwise just that row), and a contiguous set dropped back inside
+  its own run is suppressed as a no-op. Non-breaking: the two leading
+  arguments keep their wave-26 meaning. (Built independently on two
+  machines with incompatible signatures; the merge kept the
+  non-breaking one, per the v1.0 semver surface freeze.) Pinned column resize was found to
+  already work — `columnAtRightBoundary` has covered the frozen band
+  since the v1.2 starter — so the work was the missing regression
+  coverage: `column-resize.test.ts` (5 tests) drives the resize FSM over
+  frozen + scrolling boundaries with min/max clamp; `row-reorder.test.ts`
+  grew to 11 tests driving the full drag. 123/123 core tests pass.
+- Wave 28 (2026-06-02) — **v1.3 tool panels, part 1** — drag-to-group
+  pill bar. `enableGroupBar: true` mounts a host DOM strip at the top of
+  the header chrome (folded into `fullHeaderHeight()`; the column-group
+  band is shifted down by a single `ctx.translate` so no header-draw
+  coordinates were rewritten). Pills are removable + native-HTML5-drag
+  reorderable; an "add column" `<select>` lists ungrouped columns. The
+  grid emits `onRowGrouping(columnIds: string[])` on every change and
+  exposes `setGroupColumns()` / `getGroupColumns()`; seed via
+  `groupColumns`. Pure UI — computes no grouping (consumer wires to
+  `@onegrid/data` `groupRows()`). `group-bar.test.ts` (12 tests, DOM +
+  callback-payload driven). 135/135 core tests. Open item: the bar does
+  not auto-refresh pill labels on `setColumns()` (avoids rebuilding 60×/s
+  during a column-resize drag); fine for static column sets.
+- Wave 29 (2026-06-02) — **v1.3 tool panels, part 2** — aggregation side
+  panel. `enableAggregationPanel: true` docks a right-edge aside
+  (floats over the data band via a shared `buildSidePanel` shell — no
+  layout-math change) with one aggregator `<select>` per column. The
+  grid owns a `columnId → AggregationType` map and composes the full
+  protocol `AggregationModel` (alias = column id, column order) on each
+  change, firing `onAggregationChange(model)`. Seed via `aggregations`;
+  `openAggregationPanel()` / `closeAggregationPanel()` /
+  `aggregationPanelOpen`; imperative `setColumnAggregator()` /
+  `getAggregationModel()`. Pure UI — consumer wires to `@onegrid/data`
+  `aggregate()` / `groupRows()`. `aggregation-panel.test.ts` (11 tests).
+  146/146 core tests. The `buildSidePanel` shell is reused by the
+  filter + pivot panels (waves 30–31).
+- Wave 30 (2026-06-02) — **v1.3 tool panels, part 3** — filter side
+  panel. `enableFilterPanel: true` docks a right-edge aside (reuses the
+  `buildSidePanel` shell) with a per-column operator `<select>` (full
+  protocol `ComparisonOperator` set) + value `<input>`. BATCHED: edits
+  accumulate in a draft map and nothing fires until Apply / `applyFilterPanel()`,
+  which composes a `LogicalFilter('and', [ComparisonFilter…])` (single
+  ops → `value`; in/notIn/between/notBetween → comma-split `values`;
+  isNull/isNotNull → unary, value input disabled) or `null`, firing
+  `onFilterModelChange`. Clear resets + fires `null`.
+  `openFilterPanel()` / `closeFilterPanel()` / `filterPanelOpen`. Pure
+  UI — consumer wires to `@onegrid/data` `filterIndex()`; distinct from
+  the per-keystroke `floatingFilters` row. `filter-panel.test.ts` (12
+  tests, incl. batching: edits don't fire pre-Apply). 158/158 core tests.
+- Wave 31 (2026-06-02) — **v1.3 tool panels, part 4** — pivot side panel,
+  completing all four panels. `enablePivotPanel: true` docks a right-edge
+  aside (reuses `buildSidePanel`) with a per-column bin picker (none /
+  rows / columns / values); a values-bin column reveals an aggregator
+  picker (default sum). Each change composes the full protocol
+  `PivotModel` — rows + columns ordered by column position, one measure
+  per values column (alias = id) — and fires `onPivotChange(model)`. Seed
+  via `pivotModel`; `openPivotPanel()` / `closePivotPanel()` /
+  `pivotPanelOpen`; imperative `setPivotBin()` / `getPivotModel()`. Pure
+  UI — consumer wires to `@onegrid/data` `pivot()`.
+  `pivot-panel.test.ts` (13 tests, incl. bin-order preservation +
+  values-bin default-sum-then-aggregator). 171/171 core tests. Open item:
+  drag-between-bins is a future UX nicety — the bin picker gives the full
+  model binding today. **v1.3 tool-panel set complete (waves 28–31);**
+  the milestone's non-panel items (status-bar plugin surface,
+  loading/no-rows overlays, controlled-state) remain.
 
 **Chunk A (OOXML interop) status as of 2026-06-02.** `@onegrid/xlsx`
 scaffold shipped: package manifest + tsup/tsconfig + worksheet
@@ -1063,19 +1132,57 @@ MCP. 96/96 core tests pass.
   (which covers compute-time customization; slots cover render-time
   component substitution).
 
-### v1.3.0 — "tool panels + UI surfaces"
+### v1.3.0 — "tool panels + UI surfaces"  🟡 **All four tool panels shipped (waves 28–31, 2026-06-02); status-bar plugin surface + controlled-state overlays remain.**
 
 Surfaces every grid library is expected to ship as out-of-the-box UI.
-Today only the column tool panel exists.
+Today the column tool panel + the group bar exist.
 
-- **Drag-to-group toolbar bar** — pill UI above the grid; drop a
-  column-header pill in to group by that column. The current group-by
-  is a `<select>` dropdown.
-- **Pivot side panel UI** — drag rows / columns / values bins; updates
-  the PivotModel; the existing pivot compute path consumes it.
-- **Filter side panel** — every column's filter accessible from one
-  panel (current: floating filter row + per-column popovers).
-- **Aggregation side panel** — per-group-by-column aggregator picker.
+**Architecture (all tool panels).** Panels mount as DOM chrome inside
+`host` — same pattern as the wave-25 find toolbar — and emit
+model-shaped callbacks. `@onegrid/core` computes NOTHING: the consumer
+wires each callback to `@onegrid/data` (`groupRows` / `pivot` /
+`filterIndex`) and feeds results back via `setRowSource()` /
+`setColumns()`. Every new GridOption is additive (optional). Panels
+reuse only TYPE-ONLY imports of the `@onegrid/protocol` model shapes.
+
+- ✅ **Drag-to-group pill bar** (wave 28) — `enableGroupBar: true`
+  mounts a strip at the top of the header chrome (folded into
+  `fullHeaderHeight()`, so the data band sits below it) holding one
+  removable, drag-reorderable pill per active group-by column plus an
+  "add column" picker. The grid owns the ordered list as UI state and
+  emits `onRowGrouping(columnIds: string[])` on every change; seed it
+  with `groupColumns`. Imperative `setGroupColumns()` / `getGroupColumns()`.
+- ✅ **Pivot side panel UI** (wave 31) — `enablePivotPanel: true` docks a
+  right-edge aside (reuses `buildSidePanel`) binding each column to one of
+  the three `PivotModel` bins via a bin picker (rows / columns / values);
+  a values-bin column also gets an aggregator picker (default sum). Any
+  change composes the full `PivotModel` (rows + columns ordered by column
+  position; one measure per values column, alias = id) and fires
+  `onPivotChange(model)`. Seed via `pivotModel`; imperative
+  `setPivotBin()` / `getPivotModel()`. The consumer feeds it to
+  `@onegrid/data` `pivot()`. (Drag-between-bins is a future UX nicety; the
+  bin picker gives the full model binding today.)
+- ✅ **Filter side panel** (wave 30) — `enableFilterPanel: true` docks a
+  right-edge aside (reuses the wave-29 `buildSidePanel` shell) with a
+  per-column operator picker (the full protocol `ComparisonOperator` set)
+  + value input. Changes are BATCHED — nothing fires until Apply (or
+  `applyFilterPanel()`), which composes a `LogicalFilter('and', [...])`
+  of one `ComparisonFilter` per set column (single-value ops → `value`;
+  in/notIn/between/notBetween → comma-split `values`; isNull/isNotNull →
+  neither) or `null` when empty, firing `onFilterModelChange(model)`.
+  Clear resets + fires `null`. Distinct from the per-keystroke
+  `floatingFilters` row. Values are strings; the consumer coerces +
+  wires to `@onegrid/data` `filterIndex()`.
+- ✅ **Aggregation side panel** (wave 29) — `enableAggregationPanel: true`
+  docks a right-edge aside (floats over the data band — no layout-math
+  change) with one aggregator picker per column (none / sum / avg /
+  count / countDistinct / min / max / first / last). The grid owns a
+  `columnId → AggregationType` map and composes the full
+  `AggregationModel` (alias = column id) on each change, firing
+  `onAggregationChange(model)`. Seed via `aggregations`; toggle with
+  `openAggregationPanel()` / `closeAggregationPanel()` (or
+  `aggregationPanelOpen: true`); imperative `setColumnAggregator()` /
+  `getAggregationModel()`.
 - **Status-bar plugin surface** — adopters add per-grid panels
   (selection / row-count / KPIs); extends the existing status bar
   which has fixed selection-aggregate slots only.
@@ -1174,11 +1281,33 @@ These are gates the **codebase doesn't ship** — they live in CI, infra,
 or external services. Each is a fix-it batch, not a feature milestone.
 
 **Distribution + reachability**
-- 🔴 **Publish to npm** — every dep is currently `workspace:*`;
-  nothing on the registry. Blocks every external adopter.
+- 🟡 **Publish to npm** — prep complete (2026-06-02); blocked only on
+  the `@onegrid` org claim + `NPM_TOKEN` secret (account actions the repo
+  can't self-serve — see [`PUBLISHING.md`](./PUBLISHING.md)). Done: all 44
+  publishable manifests carry `repository`/`homepage`/`bugs`/`keywords`/
+  `publishConfig.access:public`/`files`; every package has a `README` +
+  `LICENSE`; `.changeset/config.json` validates (removed a phantom
+  `@onegrid/docs` ignore entry that would have crashed the release
+  workflow); `release.yml` wires npm auth (`registry-url` +
+  `NODE_AUTH_TOKEN` — was missing, would have 401'd) and gates on
+  typecheck+test; `CHANGELOG.md` seeded for 1.0.0. Verified via
+  `pnpm -r publish --dry-run` (all 44 OK; tarballs = dist+README+LICENSE+
+  manifest only). First publish is `1.0.0` straight from current
+  manifests — no changeset needed. Flips to 🟢 once published. The
+  `workspace:*` deps are rewritten to real versions automatically by
+  `pnpm publish` (the `save-workspace-protocol: rolling` `.npmrc` setting).
 - 🔴 **Live demo URL** — `apps/playground` and the broader [`apps/showcase`](./apps/showcase) (every-package-wired-together demo, `0244521`) are local-only; no hosted preview yet. Vercel / Netlify / Cloudflare Pages configs ship with the showcase as of 2026-06-02 (`61af59e`'s follow-up); flips to 🟢 once a hosted URL exists.
-- 🔴 **Docs site** — `docs/*.md` are markdown only; no rendered site
-  (`docs.onegrid.dev` or similar via Astro / Nextra / VitePress).
+- 🟡 **Docs site** — built (2026-06-02): [`apps/docs`](./apps/docs) is an
+  Astro Starlight site (search via Pagefind, light/dark, syntax
+  highlighting, sitemap). Hand-authored landing + getting-started +
+  package-map pages; the curated guides (SURFACE / SEMVER / SECURITY /
+  bundle-budgets / dbsp-spec) + the changelog are mirrored from
+  `docs/*.md` + root `CHANGELOG.md` by `sync-content.mjs` at build time
+  (single source of truth — generated copies are gitignored). Builds
+  clean locally (`pnpm --filter @onegrid/docs build` → 10 pages);
+  `vercel.json` ships. Flips to 🟢 once hosted (needs the Vercel login —
+  same gate as the live demo URL). Internal `docs/v*.md` wave logs are
+  intentionally not published.
 - **CDN / unpkg bundle** — standalone `<script>`-tag distribution.
 - **Storybook for component packages** — `@onegrid/react`'s
   `<ColumnToolPanel>`, `<SelectAllCheckbox>`, etc.

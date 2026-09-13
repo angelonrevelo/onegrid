@@ -5,10 +5,14 @@ tables, Fenwick-tree row heights, bitmap selection vectors, multi-column sort,
 recursive filter evaluation, hierarchical grouping with aggregations, and
 pivoting. Framework-agnostic — no DOM, no React.
 
+Part of [oneGrid](https://github.com/CelestialBrain/onegrid) — a free, MIT-licensed, framework-agnostic
+data grid. See the [monorepo README](https://github.com/CelestialBrain/onegrid#readme) for the full
+package map, architecture, and roadmap.
+
 ## Install
 
 ```sh
-pnpm add @onegrid/data
+npm install @onegrid/data
 ```
 
 ## What's in it
@@ -75,3 +79,8 @@ Three behaviours worth knowing:
 ## License
 
 MIT
+
+## Documentation
+
+The public API surface is tracked in
+[`docs/api`](https://github.com/CelestialBrain/onegrid/tree/main/docs/api).

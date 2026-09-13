@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { SelectionSnapshot } from './selection';
-import type { SortModel } from '@onegrid/protocol';
+import type { AggregationModel, FilterModel, PivotModel, SortModel } from '@onegrid/protocol';
 
 /**
  * Per-column configuration. Width is the only required visual property; the
@@ -277,6 +277,10 @@ export interface GridTheme {
   readonly border: string;
   readonly fontFamily: string;
   readonly fontSize: number;
+  /** Background for group-header rows (row grouping / tree). Optional;
+   *  falls back to `headerBackground` when unset, so existing themes are
+   *  unchanged. Lets light themes avoid a hardcoded dark group band. */
+  readonly groupBackground?: string;
 }
 
 /** Discriminated union describing what the user right-clicked. The
@@ -371,7 +375,10 @@ export interface GridOptions {
    *  `movedRow` is then `[fromRow]`. The two leading arguments keep their
    *  wave-26 meaning so existing handlers are unaffected — an adopter that
    *  wants multi-row support reads the third argument, and one that does not
-   *  keeps working on the first row of the set. */
+   *  keeps working on the first row of the set.
+   *
+   *  No-op drops never fire: a contiguous moved set dropped back inside (or at
+   *  either edge of) the run it occupies changes nothing. */
   readonly onRowReorder?: (
     fromRow: number,
     toRow: number,
@@ -629,6 +636,90 @@ export interface GridOptions {
    *  RowGroupMeta.path so the caller can flip its expansion state and
    *  rebuild the wrapped RowSource. */
   readonly onToggleGroup?: (path: string) => void;
+
+  // ---- Tool panels (v1.3) ----
+  //
+  // These mount as DOM chrome inside `host` and emit model-shaped
+  // callbacks. The grid computes NOTHING — the consumer wires each
+  // callback to @onegrid/data (groupRows / pivot / filterIndex) and
+  // feeds results back via setRowSource() / setColumns(). All additive.
+
+  /** v1.3. Show the drag-to-group pill bar — a strip at the top of the
+   *  header chrome holding one removable, reorderable pill per active
+   *  group-by column, plus a drop target. Default false. Seed the
+   *  initial pills with `groupColumns`. The grid owns the pill list as
+   *  UI state and emits `onRowGrouping` whenever it changes; the
+   *  consumer rebuilds its grouped RowSource. */
+  readonly enableGroupBar?: boolean;
+
+  /** v1.3. Initial group-by column ids shown as pills in the group bar.
+   *  Order is the nesting order (outer → inner), matching
+   *  `GroupingModel.columns`. Only meaningful with `enableGroupBar`. */
+  readonly groupColumns?: ReadonlyArray<string>;
+
+  /** v1.3. Fires when the group-bar pill set changes (add / remove /
+   *  reorder). Receives the new ordered column-id list — drop it
+   *  straight into `GroupingModel.columns`. Empty array = ungrouped. */
+  readonly onRowGrouping?: (columnIds: string[]) => void;
+
+  /** v1.3. Show the aggregation side panel — a docked aside listing every
+   *  column with an aggregator picker (none / sum / avg / count /
+   *  countDistinct / min / max / first / last). Default false. Hidden
+   *  until `openAggregationPanel()` (or starts open via
+   *  `aggregationPanelOpen`). */
+  readonly enableAggregationPanel?: boolean;
+
+  /** v1.3. Start the aggregation panel open. Only meaningful with
+   *  `enableAggregationPanel`. Default false (toggle via
+   *  `openAggregationPanel()` / `closeAggregationPanel()`). */
+  readonly aggregationPanelOpen?: boolean;
+
+  /** v1.3. Seed aggregator pickers from an existing AggregationModel.
+   *  Each entry's `columnId` + `fn` sets that column's picker. */
+  readonly aggregations?: AggregationModel;
+
+  /** v1.3. Fires when any aggregator picker changes. Receives the full
+   *  composed `AggregationModel` (one `Aggregation` per column whose
+   *  picker is not "none", `fn` = the chosen type, `alias` defaulting to
+   *  the column id). Pass it to `@onegrid/data` aggregate / groupRows. */
+  readonly onAggregationChange?: (model: AggregationModel) => void;
+
+  /** v1.3. Show the filter side panel — a docked aside with a per-column
+   *  operator picker + value input. Changes are BATCHED: the composed
+   *  `FilterModel` is emitted on the Apply button (or `applyFilterPanel()`),
+   *  not per keystroke. Default false. Distinct from the per-keystroke
+   *  `floatingFilters` row. */
+  readonly enableFilterPanel?: boolean;
+
+  /** v1.3. Start the filter panel open. Default false. */
+  readonly filterPanelOpen?: boolean;
+
+  /** v1.3. Fires when the filter panel's Apply commits. Receives the
+   *  composed `FilterModel` — a `LogicalFilter('and', [...])` of one
+   *  `ComparisonFilter` per column with a set operator + value, or `null`
+   *  when nothing is set. Values are strings (the consumer coerces to the
+   *  column's type); multi-value ops (in/notIn/between/notBetween) split
+   *  the input on commas into `values`. Pass it to `@onegrid/data`
+   *  filterIndex(). */
+  readonly onFilterModelChange?: (model: FilterModel) => void;
+
+  /** v1.3. Show the pivot side panel — a docked aside binding columns to
+   *  the three `PivotModel` bins (rows / columns / values). Each column
+   *  has a bin picker; a column in the values bin also gets an aggregator
+   *  picker. Default false. */
+  readonly enablePivotPanel?: boolean;
+
+  /** v1.3. Start the pivot panel open. Default false. */
+  readonly pivotPanelOpen?: boolean;
+
+  /** v1.3. Seed the pivot bins from an existing PivotModel. */
+  readonly pivotModel?: PivotModel;
+
+  /** v1.3. Fires when any pivot bin assignment or value-aggregator
+   *  changes. Receives the full composed `PivotModel` (rows + columns are
+   *  ordered column-id lists; measures is one `Aggregation` per
+   *  values-bin column). Pass it to `@onegrid/data` pivot(). */
+  readonly onPivotChange?: (model: PivotModel) => void;
 }
 
 export interface ColumnGroupDef {

@@ -30,7 +30,16 @@ import {
   type ValidationResult,
 } from './types';
 import { SelectionModel, type CellPosition, type SelectionSnapshot } from './selection';
-import type { SortModel } from '@onegrid/protocol';
+import type {
+  Aggregation,
+  AggregationModel,
+  AggregationType,
+  ComparisonFilter,
+  ComparisonOperator,
+  FilterModel,
+  PivotModel,
+  SortModel,
+} from '@onegrid/protocol';
 
 import {
   VIRTUAL_SCROLL_CAP_PX,
@@ -51,6 +60,63 @@ interface FrameSample {
 const STATUS_BAR_HEIGHT = 24;
 const COLUMN_GROUP_BAND_HEIGHT = 24;
 const FLOATING_FILTER_ROW_HEIGHT = 28;
+const GROUP_BAR_HEIGHT = 36;
+const SIDE_PANEL_WIDTH = 240;
+
+/** Aggregator picker options (v1.3). 'none' clears the column's entry;
+ *  the rest map 1:1 to protocol AggregationType. Module-level so the
+ *  aggregation + pivot panels share one source of truth. */
+const AGGREGATOR_OPTIONS: ReadonlyArray<{ value: 'none' | AggregationType; label: string }> = [
+  { value: 'none', label: '—' },
+  { value: 'sum', label: 'Sum' },
+  { value: 'avg', label: 'Avg' },
+  { value: 'count', label: 'Count' },
+  { value: 'countDistinct', label: 'Count distinct' },
+  { value: 'min', label: 'Min' },
+  { value: 'max', label: 'Max' },
+  { value: 'first', label: 'First' },
+  { value: 'last', label: 'Last' },
+];
+
+/** Filter-panel operator picker options (v1.3). Maps 1:1 to protocol
+ *  ComparisonOperator. 'none' clears the column's filter. */
+const FILTER_OPERATOR_OPTIONS: ReadonlyArray<{
+  value: 'none' | ComparisonOperator;
+  label: string;
+}> = [
+  { value: 'none', label: '—' },
+  { value: 'eq', label: '=' },
+  { value: 'neq', label: '≠' },
+  { value: 'lt', label: '<' },
+  { value: 'lte', label: '≤' },
+  { value: 'gt', label: '>' },
+  { value: 'gte', label: '≥' },
+  { value: 'contains', label: 'contains' },
+  { value: 'notContains', label: 'not contains' },
+  { value: 'startsWith', label: 'starts with' },
+  { value: 'endsWith', label: 'ends with' },
+  { value: 'in', label: 'in' },
+  { value: 'notIn', label: 'not in' },
+  { value: 'between', label: 'between' },
+  { value: 'notBetween', label: 'not between' },
+  { value: 'isNull', label: 'is null' },
+  { value: 'isNotNull', label: 'is not null' },
+];
+
+/** Operators that take NO value (unary). */
+const UNARY_FILTER_OPS: ReadonlySet<ComparisonOperator> = new Set<ComparisonOperator>([
+  'isNull',
+  'isNotNull',
+]);
+
+/** Operators that take a comma-split `values` array rather than a single
+ *  `value`. */
+const MULTI_VALUE_FILTER_OPS: ReadonlySet<ComparisonOperator> = new Set<ComparisonOperator>([
+  'in',
+  'notIn',
+  'between',
+  'notBetween',
+]);
 
 interface PerformanceWithMemory extends Performance {
   readonly memory?: {
@@ -211,6 +277,58 @@ export class Grid {
   private floatingFilterBandEl: HTMLDivElement | null = null;
   private readonly floatingFilterInputs = new Map<string, HTMLInputElement>();
 
+  // Drag-to-group pill bar (v1.3). A strip at the top of the header
+  // chrome holding one pill per active group-by column + a drop target.
+  // The grid owns the ordered column-id list as UI state; mutations fire
+  // onRowGrouping. The bar consumes vertical space folded into
+  // fullHeaderHeight() (same mechanism as the column-group band).
+  private readonly groupBarEnabled: boolean;
+  private readonly onRowGrouping:
+    | ((columnIds: string[]) => void)
+    | undefined;
+  private groupColumns: string[] = [];
+  private groupBarEl: HTMLDivElement | null = null;
+  /** Index in groupColumns where a dragged pill would drop, or -1 when
+   *  no pill drag is active. Drives the live insertion caret. */
+  private groupPillDragFrom = -1;
+  private groupPillDragTo = -1;
+
+  // Aggregation side panel (v1.3). Docked aside listing every column with
+  // an aggregator picker. The panel owns a columnId → AggregationType map
+  // as UI state and composes the full AggregationModel on each change.
+  private readonly aggregationPanelEnabled: boolean;
+  private readonly onAggregationChange:
+    | ((model: AggregationModel) => void)
+    | undefined;
+  private aggregationPanelEl: HTMLDivElement | null = null;
+  private aggregatorByColumn = new Map<string, AggregationType>();
+
+  // Filter side panel (v1.3). Docked aside with a per-column operator +
+  // value. UI edits accumulate in draftFilters; Apply composes the
+  // FilterModel and fires onFilterModelChange (batched, not per-keystroke).
+  private readonly filterPanelEnabled: boolean;
+  private readonly onFilterModelChange:
+    | ((model: FilterModel) => void)
+    | undefined;
+  private filterPanelEl: HTMLDivElement | null = null;
+  /** Per-column draft operator + raw value string (pre-Apply). */
+  private readonly filterDraft = new Map<
+    string,
+    { op: ComparisonOperator; raw: string }
+  >();
+
+  // Pivot side panel (v1.3). Binds columns to the three PivotModel bins.
+  // pivotBin maps columnId → 'rows' | 'columns' | 'values'; for a column
+  // in the values bin, pivotMeasureFn holds its aggregator. The composed
+  // PivotModel fires on every change.
+  private readonly pivotPanelEnabled: boolean;
+  private readonly onPivotChange:
+    | ((model: PivotModel) => void)
+    | undefined;
+  private pivotPanelEl: HTMLDivElement | null = null;
+  private readonly pivotBin = new Map<string, 'rows' | 'columns' | 'values'>();
+  private readonly pivotMeasureFn = new Map<string, AggregationType>();
+
   // Pinned rows + column groups + status bar.
   private pinnedTopRowSource: RowSource | undefined;
   private pinnedBottomRowSource: RowSource | undefined;
@@ -326,6 +444,11 @@ export class Grid {
   private rowDragCandidateClientY = 0;
   private rowDragActiveRow: number | null = null;
   private rowDragInsertIndex = 0;
+  /** The full set of rows that travel together when a drag is active
+   *  (multi-row since v1.2). Captured at drag-start: if the grabbed row
+   *  is inside the current selection, this is every selected row;
+   *  otherwise it is just the grabbed row. Always ascending. */
+  private rowDragRows: number[] = [];
   private rowDragIndicatorEl: HTMLDivElement | null = null;
   /** Drag insertion index (the column index where the dragged column
    *  would land if dropped now). Range: [0, this.columns.length]. */
@@ -394,6 +517,42 @@ export class Grid {
     // Floating filter row.
     this.floatingFiltersEnabled = options.floatingFilters === true;
     this.onFloatingFilterChange = options.onFloatingFilterChange;
+
+    // Drag-to-group pill bar (v1.3).
+    this.groupBarEnabled = options.enableGroupBar ?? false;
+    this.onRowGrouping = options.onRowGrouping;
+    this.groupColumns = options.groupColumns ? [...options.groupColumns] : [];
+
+    // Aggregation side panel (v1.3).
+    this.aggregationPanelEnabled = options.enableAggregationPanel ?? false;
+    this.onAggregationChange = options.onAggregationChange;
+    if (options.aggregations) {
+      for (const a of options.aggregations) {
+        // Only seed builtin types; custom string keys aren't pickable in
+        // the panel, so they'd have no <option> to select.
+        if (AGGREGATOR_OPTIONS.some((o) => o.value === a.fn)) {
+          this.aggregatorByColumn.set(a.columnId, a.fn as AggregationType);
+        }
+      }
+    }
+
+    // Filter side panel (v1.3).
+    this.filterPanelEnabled = options.enableFilterPanel ?? false;
+    this.onFilterModelChange = options.onFilterModelChange;
+
+    // Pivot side panel (v1.3).
+    this.pivotPanelEnabled = options.enablePivotPanel ?? false;
+    this.onPivotChange = options.onPivotChange;
+    if (options.pivotModel) {
+      for (const id of options.pivotModel.rows) this.pivotBin.set(id, 'rows');
+      for (const id of options.pivotModel.columns) this.pivotBin.set(id, 'columns');
+      for (const m of options.pivotModel.measures) {
+        this.pivotBin.set(m.columnId, 'values');
+        if (AGGREGATOR_OPTIONS.some((o) => o.value === m.fn)) {
+          this.pivotMeasureFn.set(m.columnId, m.fn as AggregationType);
+        }
+      }
+    }
     if (options.expanded) {
       this.expanded = new Set(options.expanded);
     }
@@ -599,6 +758,52 @@ export class Grid {
       this.host.appendChild(band);
       this.floatingFilterBandEl = band;
       this.buildFloatingFilterInputs();
+    }
+
+    // Drag-to-group pill bar (v1.3): a strip at the very top of the host
+    // holding one pill per active group-by column. Folded into
+    // fullHeaderHeight() so the data band sits below it.
+    if (this.groupBarEnabled) {
+      const bar = document.createElement('div');
+      bar.setAttribute('role', 'toolbar');
+      bar.setAttribute('aria-label', 'Group by columns');
+      bar.setAttribute('aria-controls', this.gridId);
+      bar.style.cssText =
+        `position:absolute;left:0;right:0;top:0;height:${String(GROUP_BAR_HEIGHT)}px;` +
+        `background:${this.theme.headerBackground};color:${this.theme.text};` +
+        'border-bottom:1px solid #2a2f37;z-index:4;display:flex;align-items:center;' +
+        `gap:6px;padding:0 10px;overflow:hidden;font-family:${this.theme.fontFamily};` +
+        'font-size:12px;box-sizing:border-box;';
+      this.host.appendChild(bar);
+      this.groupBarEl = bar;
+      this.renderGroupBar();
+    }
+
+    // Aggregation side panel (v1.3): a docked aside on the right edge,
+    // floating over the data band (no layout-math change). Hidden until
+    // opened unless aggregationPanelOpen was set.
+    if (this.aggregationPanelEnabled) {
+      this.aggregationPanelEl = this.buildSidePanel('Aggregation', 'Aggregation panel');
+      this.host.appendChild(this.aggregationPanelEl);
+      this.renderAggregationPanel();
+      if (options.aggregationPanelOpen) this.openAggregationPanel();
+    }
+
+    // Filter side panel (v1.3): docked right-edge aside, batched Apply.
+    if (this.filterPanelEnabled) {
+      this.filterPanelEl = this.buildSidePanel('Filters', 'Filter panel');
+      this.host.appendChild(this.filterPanelEl);
+      this.renderFilterPanel();
+      if (options.filterPanelOpen) this.openFilterPanel();
+    }
+
+    // Pivot side panel (v1.3): docked right-edge aside binding columns to
+    // the rows / columns / values bins.
+    if (this.pivotPanelEnabled) {
+      this.pivotPanelEl = this.buildSidePanel('Pivot', 'Pivot panel');
+      this.host.appendChild(this.pivotPanelEl);
+      this.renderPivotPanel();
+      if (options.pivotPanelOpen) this.openPivotPanel();
     }
 
     // Tooltip: a shared element re-targeted per hovered cell. Mounted
@@ -943,6 +1148,14 @@ export class Grid {
     this.floatingFilterBandEl?.remove();
     this.floatingFilterBandEl = null;
     this.floatingFilterInputs.clear();
+    this.groupBarEl?.remove();
+    this.groupBarEl = null;
+    this.aggregationPanelEl?.remove();
+    this.aggregationPanelEl = null;
+    this.filterPanelEl?.remove();
+    this.filterPanelEl = null;
+    this.pivotPanelEl?.remove();
+    this.pivotPanelEl = null;
     this.statusBarEl?.remove();
     this.statusBarEl = null;
     // Tear down any still-mounted detail panels so nested Grids /
@@ -1806,8 +2019,15 @@ export class Grid {
     // 6-px threshold; then track the cursor's nearest row boundary.
     if (this.rowDragCandidateRow !== null) {
       if (Math.abs(e.clientY - this.rowDragCandidateClientY) > 6) {
-        this.rowDragActiveRow = this.rowDragCandidateRow;
+        const grabbed = this.rowDragCandidateRow;
+        this.rowDragActiveRow = grabbed;
         this.rowDragCandidateRow = null;
+        // Capture the travelling set at drag-start (multi-row since
+        // v1.2). If the grabbed row is part of the current selection,
+        // every selected row moves as one block; otherwise just the
+        // grabbed row. Snapshot here so later selection changes during
+        // the drag don't alter what moves.
+        this.rowDragRows = this.rowDragMovedRow(grabbed);
         this.ensureRowDragIndicator();
       }
     }
@@ -1919,22 +2139,29 @@ export class Grid {
       this.scheduleRender();
       return;
     }
-    // Row drag-reorder finalize (wave 26). The grid doesn't own the row
-    // store, so we just emit `onRowReorder(fromRow, toRow)` — the adopter
-    // performs the actual data mutation. Insertion index semantics match
-    // column-reorder: `to > from` means the target index shifts by -1
-    // after the splice.
+    // Row drag-reorder finalize (wave 26; multi-row since v1.2). The grid
+    // doesn't own the row store, so we just emit
+    // `onRowReorder(fromRow, toRow, movedRow)` — the adopter performs the
+    // actual data mutation. The two leading arguments keep their wave-26
+    // meaning; `movedRow` is the travelling set snapshotted at drag-start.
     if (this.rowDragActiveRow !== null) {
       const from = this.rowDragActiveRow;
+      const movedRow = this.rowDragRows.length > 0 ? this.rowDragRows : [from];
       const to = this.rowDragInsertIndex;
       this.rowDragActiveRow = null;
+      this.rowDragRows = [];
       this.removeRowDragIndicator();
       const targetIndex = to > from ? to - 1 : to;
-      const movedRow = this.rowDragMovedRow(from);
-      // A multi-row drag is still a no-op when the block lands where it began,
-      // which for a set means: single row, unchanged index.
-      const unchanged = movedRow.length === 1 && targetIndex === from;
-      if (!unchanged && this.onRowReorder) {
+      // No-op detection: dropping a contiguous set back inside (or at either
+      // edge of) the run it already occupies changes nothing. A contiguous
+      // run [lo..hi] is unchanged by an insertion index in [lo, hi+1]; for a
+      // single row that is exactly "same index". Non-contiguous sets always
+      // relocate into one block, so they are never a no-op.
+      const lo = movedRow[0] ?? from;
+      const hi = movedRow[movedRow.length - 1] ?? from;
+      const contiguous = hi - lo + 1 === movedRow.length;
+      const noop = contiguous && to >= lo && to <= hi + 1;
+      if (!noop && this.onRowReorder) {
         this.onRowReorder(from, targetIndex, movedRow);
       }
       this.suppressSelectionUntilUp = false;
@@ -2311,12 +2538,21 @@ export class Grid {
     return this.columnGroups && this.columnGroups.length > 0 ? COLUMN_GROUP_BAND_HEIGHT : 0;
   }
 
-  /** Total header band height — base header plus column-group band when
-   *  groups are present, plus the floating filter row when enabled.
-   *  Cell-positioning math below uses this instead of the raw
-   *  `headerHeight`. */
+  /** Strip reserved at the very top of the header chrome for the
+   *  drag-to-group pill bar (v1.3). Zero unless `enableGroupBar`. The
+   *  bar itself is a DOM overlay; the canvas only reserves the space and
+   *  paints nothing in it. Sits ABOVE the column-group band. */
+  private groupBarHeight(): number {
+    return this.groupBarEnabled ? GROUP_BAR_HEIGHT : 0;
+  }
+
+  /** Total header band height — group bar (v1.3) + base header +
+   *  column-group band when groups are present + floating filter row
+   *  when enabled. Cell-positioning math below uses this instead of the
+   *  raw `headerHeight`. */
   private fullHeaderHeight(): number {
     return (
+      this.groupBarHeight() +
       this.headerHeight +
       this.columnGroupBandHeight() +
       this.floatingFilterRowHeight()
@@ -2357,6 +2593,554 @@ export class Grid {
       this.floatingFilterBandEl.appendChild(input);
       this.floatingFilterInputs.set(column.id, input);
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Group bar (v1.3)
+  // ---------------------------------------------------------------------------
+
+  /** Rebuild the pill bar from `groupColumns`. One pill per grouped
+   *  column (draggable for reorder, with an ✕ remove button) plus an
+   *  "add column" <select> listing the columns not yet grouped. Cheap to
+   *  rebuild wholesale — the list is tiny. */
+  private renderGroupBar(): void {
+    const bar = this.groupBarEl;
+    if (!bar) return;
+    bar.replaceChildren();
+
+    const label = document.createElement('span');
+    label.textContent = 'Group by:';
+    label.style.cssText = `color:${this.theme.mutedText};font-size:11px;margin-right:2px;`;
+    bar.appendChild(label);
+
+    if (this.groupColumns.length === 0) {
+      const hint = document.createElement('span');
+      hint.textContent = 'none — add a column →';
+      hint.style.cssText = `color:${this.theme.mutedText};font-size:11px;font-style:italic;`;
+      bar.appendChild(hint);
+    }
+
+    this.groupColumns.forEach((colId, index) => {
+      const pill = document.createElement('span');
+      pill.setAttribute('role', 'listitem');
+      pill.draggable = true;
+      pill.dataset.groupIndex = String(index);
+      const display = this.columns.find((c) => c.id === colId)?.displayName ?? colId;
+      pill.style.cssText =
+        `display:inline-flex;align-items:center;gap:4px;background:${this.theme.background};` +
+        `color:${this.theme.text};border:1px solid #2a2f37;border-radius:12px;` +
+        'padding:2px 6px 2px 10px;font-size:11px;cursor:grab;user-select:none;' +
+        'white-space:nowrap;';
+      const text = document.createElement('span');
+      text.textContent = display;
+      pill.appendChild(text);
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.textContent = '✕';
+      x.setAttribute('aria-label', `Remove ${display} from grouping`);
+      x.style.cssText =
+        `background:none;border:none;color:${this.theme.mutedText};cursor:pointer;` +
+        'font-size:10px;padding:0 2px;line-height:1;';
+      x.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.removeGroupColumn(colId);
+      });
+      pill.appendChild(x);
+
+      // Native HTML5 drag for reorder.
+      pill.addEventListener('dragstart', (e) => {
+        this.groupPillDragFrom = index;
+        this.groupPillDragTo = index;
+        e.dataTransfer?.setData('text/plain', colId);
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      });
+      pill.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        this.groupPillDragTo = index;
+      });
+      pill.addEventListener('drop', (e) => {
+        e.preventDefault();
+        this.commitGroupPillReorder(index);
+      });
+      pill.addEventListener('dragend', () => {
+        this.groupPillDragFrom = -1;
+        this.groupPillDragTo = -1;
+      });
+      bar.appendChild(pill);
+    });
+
+    const ungrouped = this.columns.filter((c) => !this.groupColumns.includes(c.id));
+    if (ungrouped.length > 0) {
+      const add = document.createElement('select');
+      add.setAttribute('aria-label', 'Add column to grouping');
+      add.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 4px;' +
+        'margin-left:auto;cursor:pointer;';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '+ add';
+      add.appendChild(placeholder);
+      for (const c of ungrouped) {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.displayName ?? c.id;
+        add.appendChild(opt);
+      }
+      add.addEventListener('change', () => {
+        if (add.value) this.addGroupColumn(add.value);
+      });
+      bar.appendChild(add);
+    }
+  }
+
+  /** Move the dragged pill (groupPillDragFrom) to land before `target`. */
+  private commitGroupPillReorder(target: number): void {
+    const from = this.groupPillDragFrom;
+    this.groupPillDragFrom = -1;
+    this.groupPillDragTo = -1;
+    if (from < 0 || from === target) return;
+    const next = [...this.groupColumns];
+    const [moved] = next.splice(from, 1);
+    if (moved === undefined) return;
+    // After removal, indices ≥ from shift left by one — the same
+    // insertion-index convention as column / row reorder.
+    const insertAt = target > from ? target - 1 : target;
+    next.splice(insertAt, 0, moved);
+    this.setGroupColumns(next);
+  }
+
+  private addGroupColumn(colId: string): void {
+    if (this.groupColumns.includes(colId)) return;
+    this.setGroupColumns([...this.groupColumns, colId]);
+  }
+
+  private removeGroupColumn(colId: string): void {
+    this.setGroupColumns(this.groupColumns.filter((id) => id !== colId));
+  }
+
+  /** Replace the group-by column list. Rebuilds the pill bar and fires
+   *  `onRowGrouping`. The public imperative entry point — also used by
+   *  the bar's own add / remove / reorder handlers. No-ops (and stays
+   *  silent) when the list is unchanged. */
+  setGroupColumns(columnIds: ReadonlyArray<string>): void {
+    const next = [...columnIds];
+    const same =
+      next.length === this.groupColumns.length &&
+      next.every((id, i) => id === this.groupColumns[i]);
+    if (same) return;
+    this.groupColumns = next;
+    this.renderGroupBar();
+    this.onRowGrouping?.([...this.groupColumns]);
+  }
+
+  /** Current group-by column ids, in nesting order. */
+  getGroupColumns(): string[] {
+    return [...this.groupColumns];
+  }
+
+  // ---------------------------------------------------------------------------
+  // Side panels (v1.3): aggregation / filter / pivot
+  // ---------------------------------------------------------------------------
+
+  /** Build an empty docked side panel shell (right edge, floats over the
+   *  data band — no layout-math change). Returns the element with a
+   *  header row (title + ✕ close) already mounted; callers fill the body
+   *  via a `[data-panel-body]` child. `display:none` until opened. Shared
+   *  by the aggregation / filter / pivot panels. */
+  private buildSidePanel(title: string, ariaLabel: string): HTMLDivElement {
+    const panel = document.createElement('div');
+    panel.setAttribute('role', 'region');
+    panel.setAttribute('aria-label', ariaLabel);
+    panel.style.cssText =
+      `position:absolute;top:0;right:0;bottom:0;width:${String(SIDE_PANEL_WIDTH)}px;` +
+      `background:${this.theme.headerBackground};color:${this.theme.text};` +
+      'border-left:1px solid #2a2f37;z-index:6;display:none;flex-direction:column;' +
+      `font-family:${this.theme.fontFamily};font-size:12px;` +
+      'box-shadow:-4px 0 12px rgba(0,0,0,0.35);box-sizing:border-box;';
+
+    const head = document.createElement('div');
+    head.style.cssText =
+      'display:flex;align-items:center;justify-content:space-between;' +
+      'padding:8px 10px;border-bottom:1px solid #2a2f37;flex:0 0 auto;';
+    const titleEl = document.createElement('span');
+    titleEl.textContent = title;
+    titleEl.style.cssText = 'font-weight:600;font-size:12px;';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = '✕';
+    close.setAttribute('aria-label', `Close ${title.toLowerCase()} panel`);
+    close.style.cssText =
+      `background:none;border:none;color:${this.theme.mutedText};cursor:pointer;font-size:12px;`;
+    close.addEventListener('click', () => {
+      panel.style.display = 'none';
+    });
+    head.appendChild(titleEl);
+    head.appendChild(close);
+    panel.appendChild(head);
+
+    const body = document.createElement('div');
+    body.dataset.panelBody = '';
+    body.style.cssText = 'flex:1 1 auto;overflow:auto;padding:6px 10px;';
+    panel.appendChild(body);
+
+    return panel;
+  }
+
+  private panelBody(panel: HTMLDivElement | null): HTMLDivElement | null {
+    return panel ? (panel.querySelector('[data-panel-body]') as HTMLDivElement | null) : null;
+  }
+
+  /** One labelled row per column, each with an aggregator <select>.
+   *  Selecting a type updates `aggregatorByColumn` and fires the composed
+   *  AggregationModel. */
+  private renderAggregationPanel(): void {
+    const body = this.panelBody(this.aggregationPanelEl);
+    if (!body) return;
+    body.replaceChildren();
+    for (const column of this.columns) {
+      const row = document.createElement('label');
+      row.style.cssText =
+        'display:flex;align-items:center;justify-content:space-between;gap:8px;' +
+        'padding:3px 0;white-space:nowrap;';
+      const name = document.createElement('span');
+      name.textContent = column.displayName ?? column.id;
+      name.style.cssText = 'overflow:hidden;text-overflow:ellipsis;';
+      const sel = document.createElement('select');
+      sel.setAttribute('aria-label', `Aggregator for ${column.displayName ?? column.id}`);
+      sel.dataset.columnId = column.id;
+      sel.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 4px;cursor:pointer;';
+      const current = this.aggregatorByColumn.get(column.id) ?? 'none';
+      for (const opt of AGGREGATOR_OPTIONS) {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        if (opt.value === current) o.selected = true;
+        sel.appendChild(o);
+      }
+      sel.addEventListener('change', () => {
+        this.setColumnAggregator(column.id, sel.value as 'none' | AggregationType);
+      });
+      row.appendChild(name);
+      row.appendChild(sel);
+      body.appendChild(row);
+    }
+  }
+
+  /** Compose the current AggregationModel from `aggregatorByColumn`, in
+   *  column order. Each entry's alias defaults to the column id. */
+  private composeAggregationModel(): Aggregation[] {
+    const model: Aggregation[] = [];
+    for (const column of this.columns) {
+      const fn = this.aggregatorByColumn.get(column.id);
+      if (fn) model.push({ columnId: column.id, fn, alias: column.id });
+    }
+    return model;
+  }
+
+  /** Set (or clear, with 'none') a single column's aggregator and fire
+   *  `onAggregationChange` with the recomposed model. Public imperative
+   *  entry point; also used by the panel's own <select> handlers. */
+  setColumnAggregator(columnId: string, fn: 'none' | AggregationType): void {
+    const prev = this.aggregatorByColumn.get(columnId);
+    if (fn === 'none') {
+      if (prev === undefined) return;
+      this.aggregatorByColumn.delete(columnId);
+    } else {
+      if (prev === fn) return;
+      this.aggregatorByColumn.set(columnId, fn);
+    }
+    this.onAggregationChange?.(this.composeAggregationModel());
+  }
+
+  /** Current composed AggregationModel (copy). */
+  getAggregationModel(): AggregationModel {
+    return this.composeAggregationModel();
+  }
+
+  openAggregationPanel(): void {
+    if (this.aggregationPanelEl) this.aggregationPanelEl.style.display = 'flex';
+  }
+
+  closeAggregationPanel(): void {
+    if (this.aggregationPanelEl) this.aggregationPanelEl.style.display = 'none';
+  }
+
+  // ---- Filter panel (v1.3) ----
+
+  /** One row per column (operator <select> + value <input>) plus an
+   *  Apply / Clear footer. Edits accumulate in `filterDraft`; nothing
+   *  fires until Apply (batched). */
+  private renderFilterPanel(): void {
+    const body = this.panelBody(this.filterPanelEl);
+    if (!body) return;
+    body.replaceChildren();
+
+    for (const column of this.columns) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;flex-direction:column;gap:2px;padding:4px 0;';
+      const name = document.createElement('span');
+      name.textContent = column.displayName ?? column.id;
+      name.style.cssText = `color:${this.theme.mutedText};font-size:11px;`;
+      row.appendChild(name);
+
+      const controls = document.createElement('div');
+      controls.style.cssText = 'display:flex;gap:4px;';
+      const draft = this.filterDraft.get(column.id);
+
+      const op = document.createElement('select');
+      op.setAttribute('aria-label', `Filter operator for ${column.displayName ?? column.id}`);
+      op.dataset.filterOp = column.id;
+      op.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 2px;cursor:pointer;flex:0 0 auto;';
+      for (const o of FILTER_OPERATOR_OPTIONS) {
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        if (draft && o.value === draft.op) opt.selected = true;
+        op.appendChild(opt);
+      }
+
+      const val = document.createElement('input');
+      val.type = 'text';
+      val.dataset.filterVal = column.id;
+      val.setAttribute('aria-label', `Filter value for ${column.displayName ?? column.id}`);
+      val.value = draft?.raw ?? '';
+      val.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 4px;flex:1 1 auto;min-width:0;';
+      // Unary ops disable the value input.
+      const syncValDisabled = (): void => {
+        const unary = UNARY_FILTER_OPS.has(op.value as ComparisonOperator);
+        val.disabled = unary || op.value === 'none';
+        val.placeholder = MULTI_VALUE_FILTER_OPS.has(op.value as ComparisonOperator)
+          ? 'comma,separated'
+          : '';
+      };
+      syncValDisabled();
+
+      const stash = (): void => {
+        if (op.value === 'none') this.filterDraft.delete(column.id);
+        else this.filterDraft.set(column.id, { op: op.value as ComparisonOperator, raw: val.value });
+      };
+      op.addEventListener('change', () => {
+        syncValDisabled();
+        stash();
+      });
+      val.addEventListener('input', stash);
+      // Keep panel keystrokes out of the grid's selection handlers.
+      val.addEventListener('keydown', (e) => e.stopPropagation());
+
+      controls.appendChild(op);
+      controls.appendChild(val);
+      row.appendChild(controls);
+      body.appendChild(row);
+    }
+
+    const footer = document.createElement('div');
+    footer.style.cssText =
+      'display:flex;gap:6px;justify-content:flex-end;padding-top:8px;' +
+      'border-top:1px solid #2a2f37;margin-top:6px;position:sticky;bottom:0;' +
+      `background:${this.theme.headerBackground};`;
+    const mkBtn = (text: string, onClick: () => void): HTMLButtonElement => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = text;
+      b.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;padding:3px 10px;font-size:11px;cursor:pointer;';
+      b.addEventListener('click', onClick);
+      return b;
+    };
+    footer.appendChild(mkBtn('Clear', () => this.clearFilterPanel()));
+    footer.appendChild(mkBtn('Apply', () => this.applyFilterPanel()));
+    body.appendChild(footer);
+  }
+
+  /** Compose the FilterModel from `filterDraft` and fire
+   *  `onFilterModelChange`. Single-value ops use `value`; multi-value ops
+   *  split the raw input on commas into `values`; unary ops carry
+   *  neither. Skips a column whose value is required but empty. Emits
+   *  `null` when no usable filter remains. The batched commit point. */
+  applyFilterPanel(): void {
+    const filters: ComparisonFilter[] = [];
+    for (const column of this.columns) {
+      const draft = this.filterDraft.get(column.id);
+      if (!draft) continue;
+      const { op, raw } = draft;
+      if (UNARY_FILTER_OPS.has(op)) {
+        filters.push({ type: 'comparison', columnId: column.id, op });
+      } else if (MULTI_VALUE_FILTER_OPS.has(op)) {
+        const values = raw
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+        if (values.length === 0) continue;
+        filters.push({ type: 'comparison', columnId: column.id, op, values });
+      } else {
+        if (raw.trim().length === 0) continue;
+        filters.push({ type: 'comparison', columnId: column.id, op, value: raw });
+      }
+    }
+    const model: FilterModel =
+      filters.length === 0 ? null : { type: 'logical', op: 'and', filters };
+    this.onFilterModelChange?.(model);
+  }
+
+  /** Reset every column's draft, re-render the panel, and fire `null`. */
+  clearFilterPanel(): void {
+    this.filterDraft.clear();
+    this.renderFilterPanel();
+    this.onFilterModelChange?.(null);
+  }
+
+  openFilterPanel(): void {
+    if (this.filterPanelEl) this.filterPanelEl.style.display = 'flex';
+  }
+
+  closeFilterPanel(): void {
+    if (this.filterPanelEl) this.filterPanelEl.style.display = 'none';
+  }
+
+  // ---- Pivot panel (v1.3) ----
+
+  /** One row per column: a bin <select> (unassigned / rows / columns /
+   *  values); a column in the values bin also gets an aggregator
+   *  <select>. Any change recomposes the PivotModel and fires
+   *  `onPivotChange`. (Drag-between-bins is a future UX nicety; the bin
+   *  picker gives the full model binding today.) */
+  private renderPivotPanel(): void {
+    const body = this.panelBody(this.pivotPanelEl);
+    if (!body) return;
+    body.replaceChildren();
+
+    const binOptions: ReadonlyArray<{ value: string; label: string }> = [
+      { value: 'none', label: '—' },
+      { value: 'rows', label: 'Rows' },
+      { value: 'columns', label: 'Columns' },
+      { value: 'values', label: 'Values' },
+    ];
+
+    for (const column of this.columns) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:4px;padding:3px 0;';
+      const name = document.createElement('span');
+      name.textContent = column.displayName ?? column.id;
+      name.style.cssText = 'flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+      const bin = document.createElement('select');
+      bin.setAttribute('aria-label', `Pivot bin for ${column.displayName ?? column.id}`);
+      bin.dataset.pivotBin = column.id;
+      bin.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 2px;cursor:pointer;flex:0 0 auto;';
+      const currentBin = this.pivotBin.get(column.id) ?? 'none';
+      for (const o of binOptions) {
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        if (o.value === currentBin) opt.selected = true;
+        bin.appendChild(opt);
+      }
+
+      // Aggregator picker — only meaningful for the values bin.
+      const agg = document.createElement('select');
+      agg.setAttribute('aria-label', `Pivot measure for ${column.displayName ?? column.id}`);
+      agg.dataset.pivotAgg = column.id;
+      agg.style.cssText =
+        `background:${this.theme.background};color:${this.theme.text};` +
+        'border:1px solid #2a2f37;border-radius:3px;font-size:11px;padding:1px 2px;cursor:pointer;flex:0 0 auto;';
+      const currentAgg = this.pivotMeasureFn.get(column.id) ?? 'sum';
+      for (const o of AGGREGATOR_OPTIONS) {
+        if (o.value === 'none') continue; // a measure always has an aggregator
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        if (o.value === currentAgg) opt.selected = true;
+        agg.appendChild(opt);
+      }
+      agg.style.display = currentBin === 'values' ? 'block' : 'none';
+
+      bin.addEventListener('change', () => {
+        if (bin.value === 'none') this.pivotBin.delete(column.id);
+        else this.pivotBin.set(column.id, bin.value as 'rows' | 'columns' | 'values');
+        // A column entering the values bin gets a default aggregator.
+        if (bin.value === 'values' && !this.pivotMeasureFn.has(column.id)) {
+          this.pivotMeasureFn.set(column.id, agg.value as AggregationType);
+        }
+        agg.style.display = bin.value === 'values' ? 'block' : 'none';
+        this.emitPivotChange();
+      });
+      agg.addEventListener('change', () => {
+        this.pivotMeasureFn.set(column.id, agg.value as AggregationType);
+        if (this.pivotBin.get(column.id) === 'values') this.emitPivotChange();
+      });
+
+      row.appendChild(name);
+      row.appendChild(bin);
+      row.appendChild(agg);
+      body.appendChild(row);
+    }
+  }
+
+  /** Compose the PivotModel from the bin assignments, preserving column
+   *  order within each bin. Values-bin columns become measures with their
+   *  chosen aggregator (default 'sum') and alias = column id. */
+  private composePivotModel(): PivotModel {
+    const rows: string[] = [];
+    const columns: string[] = [];
+    const measures: Aggregation[] = [];
+    for (const column of this.columns) {
+      const bin = this.pivotBin.get(column.id);
+      if (bin === 'rows') rows.push(column.id);
+      else if (bin === 'columns') columns.push(column.id);
+      else if (bin === 'values') {
+        measures.push({
+          columnId: column.id,
+          fn: this.pivotMeasureFn.get(column.id) ?? 'sum',
+          alias: column.id,
+        });
+      }
+    }
+    return { rows, columns, measures };
+  }
+
+  private emitPivotChange(): void {
+    this.onPivotChange?.(this.composePivotModel());
+  }
+
+  /** Assign a column to a pivot bin (or 'none' to unassign) and fire
+   *  `onPivotChange`. Imperative entry point mirroring the panel. */
+  setPivotBin(columnId: string, bin: 'none' | 'rows' | 'columns' | 'values'): void {
+    const prev = this.pivotBin.get(columnId);
+    const nextBin = bin === 'none' ? undefined : bin;
+    if (prev === nextBin) return;
+    if (nextBin === undefined) this.pivotBin.delete(columnId);
+    else {
+      this.pivotBin.set(columnId, nextBin);
+      if (nextBin === 'values' && !this.pivotMeasureFn.has(columnId)) {
+        this.pivotMeasureFn.set(columnId, 'sum');
+      }
+    }
+    this.renderPivotPanel();
+    this.emitPivotChange();
+  }
+
+  /** Current composed PivotModel (copy). */
+  getPivotModel(): PivotModel {
+    return this.composePivotModel();
+  }
+
+  openPivotPanel(): void {
+    if (this.pivotPanelEl) this.pivotPanelEl.style.display = 'flex';
+  }
+
+  closePivotPanel(): void {
+    if (this.pivotPanelEl) this.pivotPanelEl.style.display = 'none';
   }
 
   /** Position the band + each input over its column. Called from
@@ -3754,7 +4538,10 @@ export class Grid {
     const indent = meta.depth * 16 + 8;
     const chevronX = indent;
 
-    ctx.fillStyle = '#1b1f26';
+    // Group-header band tracks the theme (falls back to headerBackground, which
+    // equals the prior hardcoded #1b1f26 in the default dark theme) so light themes
+    // don't get a hardcoded dark band.
+    ctx.fillStyle = theme.groupBackground ?? theme.headerBackground;
     ctx.fillRect(0, y, this.viewportWidth, h);
     ctx.strokeStyle = theme.border;
     ctx.lineWidth = 1;
@@ -3948,13 +4735,19 @@ export class Grid {
   private drawHeader(): void {
     const ctx = this.ctx;
     const theme = this.theme;
+    const groupBarH = this.groupBarHeight();
     const groupH = this.columnGroupBandHeight();
-    const headerTop = groupH;
+    // Column-header labels sit below the group bar (v1.3) AND the
+    // column-group band. The group bar is a DOM overlay, so the canvas
+    // only reserves its strip and paints nothing in it.
+    const headerTop = groupBarH + groupH;
     const fullHeader = this.fullHeaderHeight();
 
-    // Background spans the whole header chrome (group band + column headers).
+    // Background spans the header chrome BELOW the group bar (the DOM bar
+    // covers its own strip). Starting at groupBarH keeps the canvas from
+    // double-painting under the bar.
     ctx.fillStyle = theme.headerBackground;
-    ctx.fillRect(0, 0, this.viewportWidth, fullHeader);
+    ctx.fillRect(0, groupBarH, this.viewportWidth, fullHeader - groupBarH);
 
     ctx.font = `600 ${String(theme.fontSize - 1)}px ${theme.fontFamily}`;
     ctx.textBaseline = 'middle';
@@ -4012,7 +4805,7 @@ export class Grid {
         const column = this.columns[col];
         if (!column) continue;
         ctx.fillStyle = theme.headerBackground;
-        ctx.fillRect(fx, 0, column.width, fullHeader);
+        ctx.fillRect(fx, groupBarH, column.width, fullHeader - groupBarH);
         ctx.fillStyle = theme.text;
         drawCell(column, fx);
         fx += column.width;
@@ -4041,6 +4834,13 @@ export class Grid {
     const theme = this.theme;
     const groupH = this.columnGroupBandHeight();
     if (groupH === 0) return;
+
+    // The band's local coordinate space starts at y=0; shift it down by
+    // the group bar (v1.3) so the whole band sits below the pill bar
+    // without rewriting every y-coordinate below.
+    const groupBarH = this.groupBarHeight();
+    ctx.save();
+    if (groupBarH !== 0) ctx.translate(0, groupBarH);
 
     const colIndex = new Map<string, number>();
     for (let i = 0; i < this.columns.length; i++) {
@@ -4129,6 +4929,8 @@ export class Grid {
     ctx.moveTo(0, groupH - 0.5);
     ctx.lineTo(this.viewportWidth, groupH - 0.5);
     ctx.stroke();
+
+    ctx.restore(); // undo the group-bar translate
   }
 
   /** Draw a fixed-height band of pinned rows starting at `bandTop`. Cells

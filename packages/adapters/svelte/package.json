@@ -40,5 +40,21 @@
   "devDependencies": {
     "jsdom": "^25",
     "svelte": "^5.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CelestialBrain/onegrid.git",
+    "directory": "packages/adapters/svelte"
+  },
+  "homepage": "https://github.com/CelestialBrain/onegrid#readme",
+  "bugs": {
+    "url": "https://github.com/CelestialBrain/onegrid/issues"
+  },
+  "keywords": [
+    "grid",
+    "datagrid",
+    "table",
+    "data-grid",
+    "svelte"
+  ]
 }

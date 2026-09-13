@@ -2,7 +2,7 @@
 
 > A free, open-source, framework-agnostic data grid built for 10M+ rows, multiple databases, formulas, instant updates, and modern ORM integrations. MIT-licensed end to end.
 
-**Status:** v1.2 shipped (on `main`) — the governed roadmap surface is **130 / 130 ✅**, enforced by `node scripts/check-roadmap-green.mjs`, which refuses a green row that is not backed by a real exported symbol and a real test file. Engine + canvas renderer with column virtualization and adaptive overscan; SSRM with canonical keyset cursors / aggregation pushdown / real-time row-diff protocol / Arrow IPC ingestion; BigInt-safe formula engine (457 Excel-compatible functions); DuckDB-WASM with cross-source SQL joins; cell editing, row grouping, pivot tables (including recursive group × pivot with correct non-decomposable rollup), master-detail with nested grids, tree data with lazy-load; merged cells, conditional formatting, multi-select chip cells, find/replace, undo/redo, Excel-class keyboard nav, pinned-column resize, multi-row drag-reorder; GPU compute kernels with CPU fallbacks and a full WebGPU render path; **nine** database adapters (Postgres, MySQL, SQLite, ClickHouse, Mongo, Snowflake, BigQuery, Elasticsearch, Prisma) with universal CDC + optimistic mutations; a Supabase-class headless table editor (`@onegrid/studio`); declarative row/column permissions; a WASM/Rust acceleration seam; and a feature-toggle preset system covering desktop, mobile, dashboard, report and database-editor profiles.
+**Status:** through v1.3 (on `main`) — the governed roadmap surface is **130 / 130 ✅**, enforced by `node scripts/check-roadmap-green.mjs`, which refuses a green row that is not backed by a real exported symbol and a real test file. Engine + canvas renderer with column virtualization and adaptive overscan; SSRM with canonical keyset cursors / aggregation pushdown / real-time row-diff protocol / Arrow IPC ingestion; BigInt-safe formula engine; DuckDB-WASM mode with cross-source SQL joins; cell editing, row grouping, pivot tables, master-detail with nested grids, tree data with lazy-load; server-side hierarchical fetch; column drag-drop reorder, column tool panel, context menu, sticky group rows, range fill-handle, selection checkbox column; GPU compute kernels (reduce / filter / hash-aggregate) with CPU fallbacks; real database adapters (Postgres, MySQL, SQLite, ClickHouse, Mongo) with universal CDC + optimistic-mutation orchestration; schema introspection; framework + ORM adapter family; **plugin-kit + DTCG tokens + headless lifecycle + intl + touch + worker-plugins + bundle-budget CI** (v0.0.9); **DBSP operator algebra + data-worker offload + sparklines** (v0.0.10); **MCP server + time-travel + AI intents + live ORM sync + CRDT collab + Salsa reactivity substrate** (v0.0.11); **WebGPU render scaffold + MSDF text + cross-DB joins** (v0.1.0); **public API surface freeze + semver guarantees + WCAG a11y gate** (v1.0.0 — external security audit pending); **Excel-class formula engine at 457/480 functions — LAMBDA family, dynamic-array spilling, structured refs + named ranges — plus OOXML `.xlsx` formula round-trip and CRDT live collaboration** (v1.1.0); **interaction polish — drag-resize columns (including frozen) + rows, auto-size, cell flash, find / replace, multi-row drag-reorder** (v1.2.0); **tool panels — drag-to-group pill bar + aggregation / filter / pivot side panels, host-mounted DOM emitting protocol-shaped callbacks** (v1.3.0). All 44 `@onegrid/*` packages are publish-ready (see [`PUBLISHING.md`](PUBLISHING.md)); an Astro Starlight docs site ships in [`apps/docs`](apps/docs).
 
 ---
 
@@ -120,7 +120,7 @@ The full slate of planned work — surface area, performance, hierarchy, databas
 
 ---
 
-## Feature surface (through v0.1.0 on `main`)
+## Feature surface (through v1.3 on `main`)
 
 ### Renderer + interaction (v0.0.6–v0.0.10)
 | Category | Status |
@@ -164,7 +164,7 @@ The full slate of planned work — surface area, performance, hierarchy, databas
 | Schema introspection (`@onegrid/introspect`) | shipped (v0.0.8) |
 | Arrow IPC ingestion (`application/vnd.apache.arrow.stream`) | shipped (v0.0.8) |
 | BigInt-safe formula path (precision past 2^53 for int64 columns) | shipped (v0.0.10) |
-| Formula engine (parser, dep graph, range nodes, Adapton-style recompute, 41 built-in fns) | shipped |
+| Formula engine (parser, dep graph, range nodes, Adapton-style recompute, 457 built-in fns) | shipped (457/480 at v1.1.0) |
 | DuckDB-WASM as a backing engine | shipped |
 | Cross-database SQL joins via DuckDB-WASM (`@onegrid/duckdb-join`) | shipped (v0.1.0) |
 | Web Worker offload for sort / filter / group / pivot (`@onegrid/data-worker`) | shipped (v0.0.10) |
@@ -205,9 +205,50 @@ The full slate of planned work — surface area, performance, hierarchy, databas
 | WebGPU render scaffold (device + cell-quad pipeline + MSDF text shader + per-cell vertex buffer protocol) | shipped (v0.1.0) |
 | Canvas → WebGPU paint-loop port (full renderer replacement) | scaffold landed; full migration in v0.1.0.x |
 
+### Stable track (v1.0)
+| Category | Status |
+|---|---|
+| Public API surface freeze + semver guarantees (`docs/SURFACE.md`, `docs/SEMVER.md`) | shipped (v1.0.0 RC) |
+| WCAG 2.1 A/AA axe-core gate across playground modes + tool panels + filters | shipped (v1.0.0) |
+| External security audit | pending |
+
+### Formulas + spreadsheet interop (v1.1)
+| Category | Status |
+|---|---|
+| Formula library to 457/480 functions (LAMBDA family, dynamic-array spilling, structured refs + named ranges, CJK locale) | shipped (v1.1.0) |
+| OOXML `.xlsx` formula round-trip — read + write, evaluated through the engine (`@onegrid/xlsx`, clean-room from ECMA-376) | shipped (v1.1.0) |
+| CRDT live collaboration — field-granularity + presence (`@onegrid/crdt`) | shipped (v1.1.0) |
+
+### Interaction polish (v1.2)
+| Category | Status |
+|---|---|
+| Drag-to-resize columns (including frozen) + rows; auto-size column to content | shipped (v1.2.0) |
+| Cell flash on update; loading / no-rows overlays surfaced | shipped (v1.2.0) |
+| Find / replace within cells (in-host toolbar + `onReplace`) | shipped (v1.2.0) |
+| Row drag-reorder + mid-table row pinning; multi-row drag-reorder (`onRowReorder(fromRows[], to)`) | shipped (v1.2.0) |
+
+### Tool panels (v1.3)
+| Category | Status |
+|---|---|
+| Drag-to-group pill bar (`enableGroupBar` → `onRowGrouping`) | shipped (v1.3.0) |
+| Aggregation side panel (per-column aggregator → `onAggregationChange`) | shipped (v1.3.0) |
+| Filter side panel (per-column operator + value, batched → `onFilterModelChange`) | shipped (v1.3.0) |
+| Pivot side panel (rows / columns / values bins → `onPivotChange`) | shipped (v1.3.0) |
+| Status-bar plugin surface; per-feature controlled-state overlays | planned (v1.3.x) |
+
+Every tool panel is host-mounted DOM emitting protocol-shaped callbacks — `@onegrid/core` computes no grouping / filter / pivot itself; the consumer wires the callback to `@onegrid/data` and feeds results back.
+
+### Distribution
+| Category | Status |
+|---|---|
+| npm publish readiness (manifests, READMEs, LICENSEs, changesets, release workflow — see `PUBLISHING.md`) | ready; blocked on `@onegrid` org claim + `NPM_TOKEN` |
+| Documentation site (Astro Starlight, `apps/docs`) | built; blocked on hosted URL |
+
 ### Roadmap ahead
 - **v0.1.0.x** — canvas→WebGPU paint-loop migration, hash-agg linear probing, Slug-style per-curve text
-- **v1.0.0** — surface freeze, full a11y audit, every adapter promoted from experimental, semver guarantees, security review
+- **v1.3.x** — status-bar plugin surface, per-feature controlled-state overlays
+- **v1.4.0** — range charts, sparkline column type, multi-rectangle clipboard, drag-fill series patterns
+- **Operational** — claim `@onegrid` npm org + publish 1.0.0; deploy the docs site + live demo (see [ROADMAP.md](ROADMAP.md) for the full operational track)
 - **v1.1.0** — spreadsheet-grade compat: ~460 Excel functions, dynamic arrays + spilling, structured table refs, R1C1 mode, OOXML interop
 
 ---
