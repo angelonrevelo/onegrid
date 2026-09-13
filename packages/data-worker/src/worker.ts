@@ -7,58 +7,23 @@
 //   // my-worker.ts
 //   export {} from '@onegrid/data-worker/worker';
 //
-// Exposes four handlers — `sort`, `filter`, `group`, `pivot` — each
-// delegating to the corresponding @onegrid/data function. Results flow
-// through the @onegrid/worker-plugins protocol; transferable typed
-// arrays + ArrayBuffers travel zero-copy.
+// Registers `sort`, `filter`, `group`, `pivot` and `aggregate` — each running
+// the corresponding @onegrid/data function — plus `configureAccel`, which
+// binds a compiled acceleration kernel so the numeric jobs run on it (see
+// ./accel). Results flow through the @onegrid/worker-plugins protocol;
+// transferable typed arrays + ArrayBuffers travel zero-copy.
 // =============================================================================
 
 import { definePluginWorker } from '@onegrid/worker-plugins/worker';
-import {
-  sortIndex,
-  filterIndex,
-  groupRows,
-  pivot,
-  type SortOptions,
-  type FilterOptions,
-  type GroupRowsOptions,
-} from '@onegrid/data';
-import type { ColumnTable } from '@onegrid/data';
-import type {
-  SortModel,
-  FilterModel,
-  GroupingModel,
-  PivotModel,
-} from '@onegrid/protocol';
+import { createDataWorkerHandler } from './handler.js';
 
-export interface SortInput {
-  readonly table: ColumnTable;
-  readonly sort: SortModel;
-  readonly options?: SortOptions;
-}
-export interface FilterInput {
-  readonly table: ColumnTable;
-  readonly filter: FilterModel;
-  readonly options?: FilterOptions;
-}
-export interface GroupInput {
-  readonly table: ColumnTable;
-  readonly grouping: GroupingModel;
-  readonly options?: GroupRowsOptions;
-}
-export interface PivotInput {
-  readonly table: ColumnTable;
-  readonly model: PivotModel;
-}
+export type {
+  AggregateInput,
+  ConfigureAccelInput,
+  FilterInput,
+  GroupInput,
+  PivotInput,
+  SortInput,
+} from './handler.js';
 
-definePluginWorker({
-  handlers: {
-    sort: (input: SortInput) =>
-      sortIndex(input.table, input.sort, input.options),
-    filter: (input: FilterInput) =>
-      filterIndex(input.table, input.filter, input.options),
-    group: (input: GroupInput) =>
-      groupRows(input.table, input.grouping, input.options),
-    pivot: (input: PivotInput) => pivot(input.table, input.model),
-  },
-});
+definePluginWorker({ handlers: createDataWorkerHandler() });
