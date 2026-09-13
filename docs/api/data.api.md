@@ -63,6 +63,9 @@ export interface ColumnIndex {
     readonly value: ReadonlyArray<unknown>;
 }
 
+// @public
+export type ColumnIndexMode = 'auto' | 'dictionary' | 'row';
+
 // @public (undocumented)
 export interface ColumnInput {
     // (undocumented)
@@ -102,7 +105,7 @@ export function countTreeNodes<T>(roots: ReadonlyArray<TreeNode<T>>): number;
 export function createColumnTable(columns: ReadonlyArray<ColumnInput>): ColumnTable;
 
 // @public (undocumented)
-export function createTableIndex(table: ColumnTable): TableIndex;
+export function createTableIndex(table: ColumnTable, option?: TableIndexOption): TableIndex;
 
 // @public (undocumented)
 export interface DistinctValue {
@@ -337,6 +340,11 @@ export interface TableIndex {
     readonly invalidate: () => void;
     // (undocumented)
     readonly table: ColumnTable;
+}
+
+// @public (undocumented)
+export interface TableIndexOption {
+    readonly mode?: ColumnIndexMode;
 }
 
 // @public (undocumented)

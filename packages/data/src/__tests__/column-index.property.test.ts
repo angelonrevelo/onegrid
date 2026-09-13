@@ -15,7 +15,12 @@ import type { ComparisonOperator, FilterNode } from '@onegrid/protocol';
 import { createColumnTable, type ColumnTable } from '../column-table';
 import { enumerateDistinct } from '../distinct';
 import { filterIndex } from '../filter';
-import { createTableIndex, enumerateDistinctIndexed, filterIndexed } from '../column-index';
+import {
+  createTableIndex,
+  enumerateDistinctIndexed,
+  filterIndexed,
+  type ColumnIndexMode,
+} from '../column-index';
 
 const cellArb = fc.oneof(
   { weight: 5, arbitrary: fc.constantFrom('a', 'A', 'ab', 'Ab', 'ba', 'é', 'e', '', '1', 'aik', 'aiko') },
@@ -92,14 +97,18 @@ const filterArb: fc.Arbitrary<FilterNode> = fc.letrec((tie) => ({
   ),
 })).node;
 
+// Every mode must be filterIndex. Small generated tables would always resolve
+// 'auto' to 'dictionary', so 'row' is forced explicitly to exercise that path.
+const modeArb = fc.constantFrom<ColumnIndexMode>('auto', 'dictionary', 'row');
+
 const RUN = { numRuns: 400 } as const;
 
 describe('filterIndexed ≡ filterIndex', () => {
-  it('(I1) any filter tree over any table produces identical bitmaps', () => {
+  it('(I1) any filter tree over any table produces identical bitmaps, in every mode', () => {
     fc.assert(
-      fc.property(tableArb, filterArb, (table, filter) => {
+      fc.property(tableArb, filterArb, modeArb, (table, filter, mode) => {
         const want = filterIndex(table, filter);
-        const got = filterIndexed(createTableIndex(table), filter);
+        const got = filterIndexed(createTableIndex(table, { mode }), filter);
         expect(Array.from(got._bytes)).toEqual(Array.from(want._bytes));
       }),
       RUN,
@@ -114,8 +123,9 @@ describe('filterIndexed ≡ filterIndex', () => {
           maxLength: 8,
         }),
         fc.boolean(),
-        (table, needle, caseSensitive) => {
-          const tableIndex = createTableIndex(table);
+        modeArb,
+        (table, needle, caseSensitive, mode) => {
+          const tableIndex = createTableIndex(table, { mode });
           for (const value of needle) {
             for (const op of ['contains', 'notContains'] as const) {
               const filter: FilterNode = { type: 'comparison', columnId: 'x', op, value, caseSensitive };
@@ -128,6 +138,53 @@ describe('filterIndexed ≡ filterIndex', () => {
       ),
       RUN,
     );
+  });
+});
+
+describe('auto mode at scale', () => {
+  it('(I5) near-unique and repeated columns in one 20K-row table match filterIndex', () => {
+    const n = 20_000;
+    const table = createColumnTable([
+      // Near-unique: 'auto' must route these through the per-row path.
+      { schema: { id: 'id', type: 'utf8' }, data: Array.from({ length: n }, (_, i) => `Row-${i}`) },
+      { schema: { id: 'price', type: 'float64' }, data: Float64Array.from({ length: n }, (_, i) => i * 0.37) },
+      // Repeated, with nulls: the dictionary path.
+      {
+        schema: { id: 'status', type: 'utf8' },
+        data: Array.from({ length: n }, (_, i) => (i % 97 === 0 ? null : ['Active', 'pending', 'CLOSED'][i % 3]!)),
+      },
+    ]);
+    const tableIndex = createTableIndex(table);
+    const leaf = (columnId: string, op: ComparisonOperator, value: unknown, caseSensitive = false): FilterNode => ({
+      type: 'comparison',
+      columnId,
+      op,
+      value,
+      caseSensitive,
+    });
+    const filter: FilterNode[] = [
+      leaf('id', 'contains', 'row-1'),
+      leaf('id', 'contains', 'Row-1', true),
+      leaf('id', 'notContains', 'ow-19'),
+      leaf('id', 'startsWith', 'row-19'),
+      leaf('id', 'endsWith', '7'),
+      leaf('id', 'eq', 'Row-42'),
+      leaf('price', 'contains', '.37'),
+      leaf('price', 'gt', 5000),
+      leaf('status', 'contains', 'ACT'),
+      leaf('status', 'isNull', null),
+      {
+        type: 'logical',
+        op: 'or',
+        filters: [leaf('id', 'contains', '99'), leaf('price', 'contains', '99'), leaf('status', 'contains', 'clo')],
+      },
+    ];
+    for (const value of ['r', 'ro', 'row', 'row-', 'row-1', 'row-12', 'x', '']) {
+      filter.push(leaf('id', 'contains', value));
+    }
+    for (const f of filter) {
+      expect(Array.from(filterIndexed(tableIndex, f)._bytes)).toEqual(Array.from(filterIndex(table, f)._bytes));
+    }
   });
 });
 

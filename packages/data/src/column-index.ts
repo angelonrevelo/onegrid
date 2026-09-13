@@ -18,11 +18,19 @@
 // row. A leaf becomes O(distinct) predicate calls plus one tight typed-array
 // pass (or a posting-list walk when few rows match).
 //
+// A dictionary only pays when values repeat. On a near-unique column (an id, a
+// timestamp, a price) it is a 500K-entry Map built for nothing, and measured on
+// the playground's dataset it made the FIRST keystroke slower than a plain scan
+// (525 ms vs 335 ms). So each column picks a mode: 'dictionary', or 'row' —
+// cached lower-cased strings per row with the same typeahead refinement, and
+// every non-string operator delegated to filterIndex itself. 'auto' samples the
+// column to decide.
+//
 // Equivalence contract: every result here is bit-identical to filterIndex /
-// enumerateDistinct on the same table. That holds because each filterIndex
-// predicate is a pure function of `(isNull(i), get(i))`, and the dictionary
-// keys by `get(i)` under SameValueZero — the same equality `in`/`notIn` and
-// enumerateDistinct's Map already use. The property test pins it.
+// enumerateDistinct on the same table, in either mode. That holds because each
+// filterIndex predicate is a pure function of `(isNull(i), get(i))`, and the
+// dictionary keys by `get(i)` under SameValueZero — the same equality `in`/
+// `notIn` and enumerateDistinct's Map already use. The property test pins it.
 //
 // The index is a snapshot. ColumnTable is immutable through its API, but the
 // arrays it wraps are the caller's; mutate them and you must rebuild.
@@ -31,7 +39,7 @@
 import type { ComparisonFilter, FilterModel, FilterNode } from '@onegrid/protocol';
 import type { ColumnTable } from './column-table';
 import type { DistinctValue } from './distinct';
-import type { FilterOptions } from './filter';
+import { filterIndex, type FilterOptions } from './filter';
 import { BitmapSelection } from './selection';
 
 export interface ColumnIndex {
@@ -96,58 +104,110 @@ export function buildColumnIndex(table: ColumnTable, columnId: string): ColumnIn
 }
 
 // -----------------------------------------------------------------------------
-// TableIndex — lazy per-column indexes plus the per-value caches a quick filter
-// keeps hitting (lower-cased strings, and the last contains-match per column).
+// TableIndex — lazy per-column indexes plus the caches a quick filter keeps
+// hitting (lower-cased strings, and the last contains-match per column).
 // -----------------------------------------------------------------------------
+
+/**
+ * How a column answers string filters. 'dictionary' evaluates once per distinct
+ * value; 'row' evaluates once per row over cached strings (no dictionary build);
+ * 'auto' samples each column and picks 'row' when it is near-unique.
+ */
+export type ColumnIndexMode = 'auto' | 'dictionary' | 'row';
+
+export interface TableIndexOption {
+  /** Default 'auto'. */
+  readonly mode?: ColumnIndexMode;
+}
 
 export interface TableIndex {
   readonly table: ColumnTable;
-  /** Build (once) and return the index for a column. */
+  /** Build (once) and return the dictionary index for a column, whatever its filter mode. */
   readonly column: (columnId: string) => ColumnIndex;
   /** Drop every cached column index — call after mutating the source arrays. */
   readonly invalidate: () => void;
 }
 
 interface ColumnState {
-  index: ColumnIndex;
-  /** `String(value ?? '').toLowerCase()` per code, built on first case-insensitive string op. */
+  readonly columnId: string;
+  readonly mode: 'dictionary' | 'row';
+  index: ColumnIndex | null;
+  /** Haystack strings per code ('dictionary') or per row ('row'), lower-cased. */
   lower: string[] | null;
-  /** Raw `String(value ?? '')` per code. */
+  /** Haystack strings, case preserved. */
   raw: string[] | null;
-  /** Last contains result, for typeahead refinement. */
+  /** 'row' mode only: 1 when the row is present (filterIndex never matches a null row). */
+  present: Uint8Array | null;
+  /** Last contains result (per code or per row), for typeahead refinement. */
   lastContain: { needle: string; caseSensitive: boolean; match: Uint8Array } | null;
 }
 
-const STATE = new WeakMap<TableIndex, Map<string, ColumnState>>();
+interface TableState {
+  readonly mode: ColumnIndexMode;
+  readonly byColumn: Map<string, ColumnState>;
+}
 
-export function createTableIndex(table: ColumnTable): TableIndex {
+const STATE = new WeakMap<TableIndex, TableState>();
+
+/** Rows sampled (evenly across the column, not just its head) to choose a mode. */
+const SAMPLE_ROW = 4096;
+/** Distinct share of the sample above which 'auto' treats a column as near-unique. */
+const NEAR_UNIQUE_RATIO = 0.9;
+
+export function createTableIndex(table: ColumnTable, option: TableIndexOption = {}): TableIndex {
   const byColumn = new Map<string, ColumnState>();
   const tableIndex: TableIndex = {
     table,
-    column: (columnId) => stateFor(tableIndex, columnId).index,
+    column: (columnId) => ensureIndex(tableIndex.table, stateFor(tableIndex, columnId)),
     invalidate: () => byColumn.clear(),
   };
-  STATE.set(tableIndex, byColumn);
+  STATE.set(tableIndex, { mode: option.mode ?? 'auto', byColumn });
   return tableIndex;
 }
 
 function stateFor(tableIndex: TableIndex, columnId: string): ColumnState {
-  const byColumn = STATE.get(tableIndex)!;
-  let state = byColumn.get(columnId);
+  const tableState = STATE.get(tableIndex)!;
+  let state = tableState.byColumn.get(columnId);
   if (!state) {
     state = {
-      index: buildColumnIndex(tableIndex.table, columnId),
+      columnId,
+      mode: chooseMode(tableIndex.table, columnId, tableState.mode),
+      index: null,
       lower: null,
       raw: null,
+      present: null,
       lastContain: null,
     };
-    byColumn.set(columnId, state);
+    tableState.byColumn.set(columnId, state);
   }
   return state;
 }
 
+function chooseMode(table: ColumnTable, columnId: string, mode: ColumnIndexMode): 'dictionary' | 'row' {
+  if (mode !== 'auto') return mode;
+  const numRows = table.numRows;
+  // Small tables: a dictionary is cheap whatever the cardinality.
+  if (numRows <= SAMPLE_ROW) return 'dictionary';
+  const column = table.column(columnId);
+  const stride = Math.floor(numRows / SAMPLE_ROW);
+  const seen = new Set<unknown>();
+  let present = 0;
+  for (let k = 0, i = 0; k < SAMPLE_ROW; k++, i += stride) {
+    if (column.isNull(i)) continue;
+    present++;
+    seen.add(column.get(i));
+  }
+  return present > 0 && seen.size / present > NEAR_UNIQUE_RATIO ? 'row' : 'dictionary';
+}
+
+function ensureIndex(table: ColumnTable, state: ColumnState): ColumnIndex {
+  if (!state.index) state.index = buildColumnIndex(table, state.columnId);
+  return state.index;
+}
+
 // -----------------------------------------------------------------------------
-// filterIndexed — filterIndex, one predicate call per distinct value
+// filterIndexed — filterIndex, one predicate call per distinct value (or per
+// cached row string)
 // -----------------------------------------------------------------------------
 
 export function filterIndexed(
@@ -183,6 +243,10 @@ function evaluateNode(
   return result;
 }
 
+function isStringOp(op: ComparisonFilter['op']): boolean {
+  return op === 'contains' || op === 'notContains' || op === 'startsWith' || op === 'endsWith';
+}
+
 function evaluateComparison(
   tableIndex: TableIndex,
   node: ComparisonFilter,
@@ -191,25 +255,62 @@ function evaluateComparison(
   const table = tableIndex.table;
   if (!table.hasColumn(node.columnId)) return new BitmapSelection(table.numRows, 'empty');
   const state = stateFor(tableIndex, node.columnId);
-  const index = state.index;
 
+  if (state.mode === 'row') {
+    // Only the string operators have a per-row cache worth keeping; every other
+    // operator IS filterIndex, so it cannot disagree with it.
+    if (!isStringOp(node.op)) return filterIndex(table, node, options);
+    return materialiseRow(table.numRows, matchRow(table, state, node));
+  }
+
+  const index = ensureIndex(table, state);
   if (node.op === 'isNull' || node.op === 'isNotNull') {
     return materialiseNull(index, node.op === 'isNull');
   }
-  const match = matchCode(state, node, options);
+  const match = matchCode(state, index, node, options);
   return materialise(index, match);
 }
 
+/** 'row' mode: one byte per row, 1 when that row satisfies a string operator. */
+function matchRow(table: ColumnTable, state: ColumnState, node: ComparisonFilter): Uint8Array {
+  const cs = node.caseSensitive ?? false;
+  const hay = haystack(table, state, cs);
+  const present = state.present!;
+  const needleRaw = String(node.value ?? '');
+  const needle = cs ? needleRaw : needleRaw.toLowerCase();
+  const numRows = hay.length;
+  const match = new Uint8Array(numRows);
+  const op = node.op;
+
+  if (op === 'contains' || op === 'notContains') {
+    const contain = containMatch(state, hay, needle, cs);
+    const flip = op === 'notContains' ? 1 : 0;
+    for (let r = 0; r < numRows; r++) match[r] = present[r]! & (contain[r]! ^ flip);
+    return match;
+  }
+  for (let r = 0; r < numRows; r++) {
+    if (present[r] !== 1) continue;
+    const h = hay[r]!;
+    match[r] = (op === 'startsWith' ? h.startsWith(needle) : h.endsWith(needle)) ? 1 : 0;
+  }
+  return match;
+}
+
 /** One byte per dictionary code: 1 when that value satisfies the predicate. */
-function matchCode(state: ColumnState, node: ComparisonFilter, options: FilterOptions): Uint8Array {
-  const value = state.index.value;
+function matchCode(
+  state: ColumnState,
+  index: ColumnIndex,
+  node: ComparisonFilter,
+  options: FilterOptions,
+): Uint8Array {
+  const value = index.value;
   const distinct = value.length;
   const match = new Uint8Array(distinct);
   const op = node.op;
   const cs = node.caseSensitive ?? false;
 
-  if (op === 'contains' || op === 'notContains' || op === 'startsWith' || op === 'endsWith') {
-    const hay = cs ? rawString(state) : lowerString(state);
+  if (isStringOp(op)) {
+    const hay = dictionaryHaystack(state, index, cs);
     const needleRaw = String(node.value ?? '');
     const needle = cs ? needleRaw : needleRaw.toLowerCase();
 
@@ -281,34 +382,74 @@ function matchCode(state: ColumnState, node: ComparisonFilter, options: FilterOp
 
 /**
  * Typeahead refinement. When the new needle contains the previous needle, every
- * value matching the new one also matched the old one, so only the old matches
+ * string matching the new one also matched the old one, so only the old matches
  * need re-testing. Typing "ai" → "aik" → "aiko" narrows the candidate set on
- * every keystroke instead of rescanning the dictionary.
+ * every keystroke instead of rescanning.
  */
 function containMatch(state: ColumnState, hay: string[], needle: string, cs: boolean): Uint8Array {
-  const distinct = hay.length;
-  const match = new Uint8Array(distinct);
+  const length = hay.length;
+  const match = new Uint8Array(length);
   const last = state.lastContain;
-  if (last && last.caseSensitive === cs && needle.includes(last.needle)) {
+  if (last && last.caseSensitive === cs && last.match.length === length && needle.includes(last.needle)) {
     const prev = last.match;
-    for (let c = 0; c < distinct; c++) {
-      if (prev[c] === 1 && hay[c]!.includes(needle)) match[c] = 1;
+    for (let i = 0; i < length; i++) {
+      if (prev[i] === 1 && hay[i]!.includes(needle)) match[i] = 1;
     }
   } else {
-    for (let c = 0; c < distinct; c++) if (hay[c]!.includes(needle)) match[c] = 1;
+    for (let i = 0; i < length; i++) if (hay[i]!.includes(needle)) match[i] = 1;
   }
   state.lastContain = { needle, caseSensitive: cs, match };
   return match;
 }
 
-function rawString(state: ColumnState): string[] {
-  if (!state.raw) state.raw = state.index.value.map((v) => String(v ?? ''));
-  return state.raw;
+/**
+ * `String(v ?? '')`, lower-cased when asked. A finite number's string form is
+ * already lower case (digits, '-', '.', 'e', '+'), so it skips the second
+ * allocation; NaN and Infinity do not, and are lower-cased like any string.
+ */
+function hayOf(v: unknown, lower: boolean): string {
+  const s = String(v ?? '');
+  return lower && !(typeof v === 'number' && Number.isFinite(v)) ? s.toLowerCase() : s;
 }
 
-function lowerString(state: ColumnState): string[] {
-  if (!state.lower) state.lower = rawString(state).map((s) => s.toLowerCase());
+function dictionaryHaystack(state: ColumnState, index: ColumnIndex, cs: boolean): string[] {
+  if (cs) {
+    if (!state.raw) state.raw = index.value.map((v) => hayOf(v, false));
+    return state.raw;
+  }
+  if (!state.lower) state.lower = index.value.map((v) => hayOf(v, true));
   return state.lower;
+}
+
+function haystack(table: ColumnTable, state: ColumnState, cs: boolean): string[] {
+  const cached = cs ? state.raw : state.lower;
+  if (cached) return cached;
+  const column = table.column(state.columnId);
+  const numRows = table.numRows;
+  const out = new Array<string>(numRows);
+  const present = state.present ?? new Uint8Array(numRows);
+  const fillPresent = state.present === null;
+  for (let r = 0; r < numRows; r++) {
+    if (column.isNull(r)) {
+      out[r] = '';
+      continue;
+    }
+    if (fillPresent) present[r] = 1;
+    out[r] = hayOf(column.get(r), !cs);
+  }
+  state.present = present;
+  if (cs) state.raw = out;
+  else state.lower = out;
+  return out;
+}
+
+function materialiseRow(numRows: number, match: Uint8Array): BitmapSelection {
+  const sel = new BitmapSelection(numRows, 'empty');
+  const bytes = sel._bytes;
+  for (let r = 0; r < numRows; r++) {
+    if (match[r] === 1) bytes[r >>> 3]! |= 1 << (r & 7);
+  }
+  return BitmapSelection.fromBytes(numRows, bytes);
 }
 
 /**
