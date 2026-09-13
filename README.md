@@ -1,6 +1,6 @@
 # oneGrid
 
-> A free, open-source, framework-agnostic data grid built for 10M+ rows, multiple databases, formulas, instant updates, and modern ORM integrations. MIT-licensed end to end.
+> A free, open-source, framework-agnostic data grid built for 10M+ rows (a billion with a uniform row height), multiple databases, formulas, instant updates, and modern ORM integrations. MIT-licensed end to end.
 
 **Status:** through v1.3 (on `main`) — the governed roadmap surface is **130 / 130 ✅**, enforced by `node scripts/check-roadmap-green.mjs`, which refuses a green row that is not backed by a real exported symbol and a real test file. Engine + canvas renderer with column virtualization and adaptive overscan; SSRM with canonical keyset cursors / aggregation pushdown / real-time row-diff protocol / Arrow IPC ingestion; BigInt-safe formula engine; DuckDB-WASM mode with cross-source SQL joins; cell editing, row grouping, pivot tables, master-detail with nested grids, tree data with lazy-load; server-side hierarchical fetch; column drag-drop reorder, column tool panel, context menu, sticky group rows, range fill-handle, selection checkbox column; GPU compute kernels (reduce / filter / hash-aggregate) with CPU fallbacks; real database adapters (Postgres, MySQL, SQLite, ClickHouse, Mongo) with universal CDC + optimistic-mutation orchestration; schema introspection; framework + ORM adapter family; **plugin-kit + DTCG tokens + headless lifecycle + intl + touch + worker-plugins + bundle-budget CI** (v0.0.9); **DBSP operator algebra + data-worker offload + sparklines** (v0.0.10); **MCP server + time-travel + AI intents + live ORM sync + CRDT collab + Salsa reactivity substrate** (v0.0.11); **WebGPU render scaffold + MSDF text + cross-DB joins** (v0.1.0); **public API surface freeze + semver guarantees + WCAG a11y gate** (v1.0.0 — external security audit pending); **Excel-class formula engine at 457/480 functions — LAMBDA family, dynamic-array spilling, structured refs + named ranges — plus OOXML `.xlsx` formula round-trip and CRDT live collaboration** (v1.1.0); **interaction polish — drag-resize columns (including frozen) + rows, auto-size, cell flash, find / replace, multi-row drag-reorder** (v1.2.0); **tool panels — drag-to-group pill bar + aggregation / filter / pivot side panels, host-mounted DOM emitting protocol-shaped callbacks** (v1.3.0). All 44 `@onegrid/*` packages are publish-ready (see [`PUBLISHING.md`](PUBLISHING.md)); an Astro Starlight docs site ships in [`apps/docs`](apps/docs).
 
@@ -10,7 +10,7 @@
 
 A single MIT-licensed grid that consolidates the things real applications need at scale into one coherent stack:
 
-- **Canvas-first rendering** at 10M rows, with a DOM accessibility shadow and DOM overlays for editors and detail panels.
+- **Canvas-first rendering** at 10M rows with variable row heights and a billion with a uniform one, with a DOM accessibility shadow and DOM overlays for editors and detail panels.
 - **Server-side row model** with cursor pagination, sliding-window block cache, optimistic mutations, and Arrow-friendly payloads — including hierarchical lazy fetches via `BlockRequest.parentId`.
 - **Spreadsheet-class formulas** with a parser, dependency graph (with range nodes for linear-edge growth), and Adapton-style demand-driven recompute.
 - **Columnar Apache-Arrow-compatible memory layout** for typed-array sort/filter and zero-copy slicing.
@@ -65,7 +65,7 @@ All under a single MIT license. No paywalled tiers. No commercial-only features.
 | [`@onegrid/intl`](packages/intl) | i18n / l10n / RTL — `Intl.*` wrappers, ICU MessageFormat subset, BCP 47 validator |
 | [`@onegrid/touch`](packages/touch) | Pointer Events 3 gesture recognizer + touch CSS emitter + VirtualKeyboard adapter |
 | [`@onegrid/worker-plugins`](packages/worker-plugins) | Worker-boundary sandbox for user-supplied compute (formula fns, aggregators) |
-| [`@onegrid/data-worker`](packages/data-worker) | Web Worker offload for `@onegrid/data` sort / filter / group / pivot |
+| [`@onegrid/data-worker`](packages/data-worker) | Web Worker offload for `@onegrid/data` sort / filter / group / pivot; numeric jobs can run on an `@onegrid/wasm` kernel |
 | [`@onegrid/dbsp`](packages/dbsp) | DBSP operator algebra — Z-sets + incremental view maintenance |
 | [`@onegrid/sparklines`](packages/sparklines) | In-cell line / bar / win-loss charts drawn to the canvas |
 | [`@onegrid/mcp`](packages/mcp) | Model Context Protocol surface — LLMs read + act on the grid through standardized tools |
@@ -125,13 +125,14 @@ The full slate of planned work — surface area, performance, hierarchy, databas
 ### Renderer + interaction (v0.0.6–v0.0.10)
 | Category | Status |
 |---|---|
-| Canvas-2D renderer (10M rows, variable row heights via Fenwick) | shipped |
+| Canvas-2D renderer (10M rows with variable row heights via Fenwick; 1B rows with a uniform height, no per-row storage) | shipped |
 | Column virtualization (visible-range narrowing in draw loops) | shipped (v0.0.10) |
 | Adaptive overscan (EMA-smoothed velocity + direction-aware split) | shipped (v0.0.10) |
 | rAF discipline + dirty-state gate (no idle-loop battery drain) | shipped (v0.0.10) |
 | Frozen columns | shipped |
 | Sort (single + multi-column) | shipped |
 | Filter (quick-filter, per-column rules, set filter with distinct counts, floating filter row) | shipped |
+| In-memory column index for quick filter + set-filter values (`createTableIndex` / `filterIndexed` / `enumerateDistinctIndexed`) | shipped |
 | Range selection (drag, shift-click, ctrl-click multi-range, shift+arrow extend) | shipped |
 | Range fill-handle (Excel-style drag-to-extend) | shipped |
 | Clipboard copy (TSV) + paste (TSV → onPaste hook) | shipped |
@@ -159,6 +160,7 @@ The full slate of planned work — surface area, performance, hierarchy, databas
 | Category | Status |
 |---|---|
 | Server-side row model (cursor + block cache + optimistic mutations) | shipped |
+| Server-side set-filter values (`fetchDistinct`; Postgres + DuckDB), debounced + cancellable query changes, recent-query block retention | shipped |
 | Real database adapters: Postgres, MySQL, SQLite, ClickHouse, Mongo | shipped (v0.0.8) |
 | Universal CDC adapter shape + monotonic row-diff stream + resync protocol | shipped (v0.0.8) |
 | Schema introspection (`@onegrid/introspect`) | shipped (v0.0.8) |
@@ -167,7 +169,7 @@ The full slate of planned work — surface area, performance, hierarchy, databas
 | Formula engine (parser, dep graph, range nodes, Adapton-style recompute, 457 built-in fns) | shipped (457/480 at v1.1.0) |
 | DuckDB-WASM as a backing engine | shipped |
 | Cross-database SQL joins via DuckDB-WASM (`@onegrid/duckdb-join`) | shipped (v0.1.0) |
-| Web Worker offload for sort / filter / group / pivot (`@onegrid/data-worker`) | shipped (v0.0.10) |
+| Web Worker offload for sort / filter / group / pivot (`@onegrid/data-worker`); numeric jobs on an `@onegrid/wasm` kernel | shipped (v0.0.10) |
 | DBSP operator algebra + incremental view maintenance (`@onegrid/dbsp`) | shipped (v0.0.10) |
 | CSV + XLSX export | shipped |
 | `@onegrid/migrate` CLI (config translator, AST-based) | shipped |
@@ -225,7 +227,7 @@ The full slate of planned work — surface area, performance, hierarchy, databas
 | Drag-to-resize columns (including frozen) + rows; auto-size column to content | shipped (v1.2.0) |
 | Cell flash on update; loading / no-rows overlays surfaced | shipped (v1.2.0) |
 | Find / replace within cells (in-host toolbar + `onReplace`) | shipped (v1.2.0) |
-| Row drag-reorder + mid-table row pinning; multi-row drag-reorder (`onRowReorder(fromRows[], to)`) | shipped (v1.2.0) |
+| Row drag-reorder + mid-table row pinning; multi-row drag-reorder (`onRowReorder(fromRow, toRow, movedRow)`) | shipped (v1.2.0) |
 
 ### Tool panels (v1.3)
 | Category | Status |
@@ -265,6 +267,13 @@ pnpm dev         # playground + mock SSRM server
 ```
 
 Requires Node 20.10+ and pnpm 9+.
+
+Query cost at database scale — needs the DuckDB CLI on `PATH` (or `DUCKDB=/path/to/duckdb`) and a built `@onegrid/duckdb`:
+
+```bash
+node apps/benchmarks/billion-db/run.mjs build <file.duckdb> <rows>   # reproducible benchmark table
+node apps/benchmarks/billion-db/run.mjs bench <file.duckdb>          # time each grid query; non-zero exit on any query error
+```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow.
 

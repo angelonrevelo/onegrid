@@ -5,7 +5,7 @@ most capable open-source grid in the JavaScript ecosystem. Items are
 grouped by where they create leverage, not by release order — see
 "Sequencing" at the bottom for milestone framing.
 
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-14
 
 ## Current state
 
@@ -47,7 +47,7 @@ application reaches for at some point.
 
 | Feature | Status | Notes |
 |---|---|---|
-| Canvas-2D renderer (10M rows, variable heights) | ✅ | Fenwick-backed |
+| Canvas-2D renderer (10M rows, variable heights) | ✅ | Fenwick-backed; a uniform `rowHeight` uses `UniformHeights` (O(overridden rows) memory) and mounts + scrolls 1B rows — `apps/benchmarks/src/perf-billion-row.spec.ts` |
 | Frozen columns | ✅ | |
 | Range selection (drag, shift-click, ctrl-click multi-range) | ✅ | |
 | Sort (single + multi) | ✅ | |
@@ -63,7 +63,7 @@ application reaches for at some point.
 | CSV + XLSX export | ✅ | |
 | Tree data | ✅ | `flattenTree` / `RowTreeMeta` in @onegrid/data; lazy `loadChildren` per node; nested grids inside detail panels piggy-back on the same row-meta path |
 | Server-side hierarchical fetches | ✅ | `BlockRequest.parentId` + per-row `HierarchyEntry`; `createSsrmTreeSource` lazy children fetcher |
-| Set filter (distinct-values checkbox + counts) | ✅ | `enumerateDistinct` in @onegrid/data + popover UI |
+| Set filter (distinct-values checkbox + counts) | ✅ | `enumerateDistinct` in @onegrid/data + popover UI; `enumerateDistinctIndexed` over a column index in memory; `fetchDistinct` server-side (Postgres + DuckDB) |
 | Floating filter row | ✅ | Per-column `<input role=searchbox>` band, sticky below header |
 | Column tool panel / sidebar | ✅ | React `<ColumnToolPanel>` with show/hide + within-panel drag-drop; `Grid.setColumns()` / `getColumns()` imperative API |
 | Context menu | ✅ | `ContextMenuTarget` discriminated union; native menu suppressed; consumer renders the popover |
@@ -100,7 +100,7 @@ on benchmark charts.
 | Velocity-aware overscan | ✅ | Basic — needs adaptive tuning |
 | GPU compute kernels (parallel reduce + filter mask) | ✅ | `@onegrid/webgpu` |
 | **Column virtualization** | ✅ | For 500+ column grids |
-| **Web Worker offload** | ✅ | Sort/filter/group/pivot off the main thread |
+| **Web Worker offload** | ✅ | Sort/filter/group/pivot off the main thread; numeric jobs run on an `@onegrid/wasm` kernel when one is bound |
 | **Full WebGPU rendering path** | ✅ | Canvas replacement: MSDF/SDF glyph atlas first, Slug-style per-curve evaluation as a phase-2 fallback, per-cell vertex buffer pipeline |
 | **Arrow IPC ingestion** | ✅ | Zero-copy from server, streaming via Arrow Flight (gRPC-Web/Connect-Web) |
 | **Differential dataflow** | ✅ | Source change → recompute only affected derived views; grounded in DBSP operator algebra (Budiu et al. VLDB 2023) |
@@ -1313,6 +1313,25 @@ or external services. Each is a fix-it batch, not a feature milestone.
   `<ColumnToolPanel>`, `<SelectAllCheckbox>`, etc.
 - **Example starter apps** beyond `apps/playground` — Next.js, Remix,
   Vite-React, SvelteKit, Nuxt, Astro Islands.
+
+**Billion-row query cost** — measured with `apps/benchmarks/billion-db/run.mjs`
+against a 1B-row DuckDB 1.5.5 table (single run, one Windows machine). The grid
+itself mounts and scrolls 1B rows; these are the database requests it sends that
+do not hold up at that scale. Browsing, keyset / `OFFSET` seeks, filtered first
+blocks and low-cardinality distinct values all stay under a second.
+- 🔴 **Quick filter as `ILIKE '%…%'` across every column** — 27 s / 95 s / 125 s
+  per keystroke for "a" / "an" / "ann" (count query; the block query for "ann"
+  is 126 s). Needs a search index (the `index` engine, DuckDB FTS, trigram), text
+  columns only, and no per-keystroke recount.
+- 🔴 **Distinct values on a high-cardinality column** — 886 s for the top 1,000
+  names (85 s under a `status` filter). Needs search-first popovers and sampled or
+  precomputed top-N instead of a full `GROUP BY`.
+- 🟡 **`COUNT(*)` on every block fetch** — `@onegrid/duckdb` runs an uncached count
+  beside each block; 1.1 s per block under a `status` filter. Cache per query
+  fingerprint, or return an approximate count first.
+- 🟡 **Sort by a non-key column / group-by** — 4.8 s for the first 100 rows by
+  `amount`, 6.5 s for a region group-by with totals. Cache per query, or
+  precompute in the database.
 
 **CI gates we don't run**
 - 🟡 **Real-database CI** — covered above in v1.6.
